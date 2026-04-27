@@ -3,8 +3,8 @@ services:
     name: pos-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    buildCommand: npm install && ./node_modules/.bin/nest build
+    startCommand: node dist/main
     autoDeploy: true
     envVars:
       - key: NODE_ENV
