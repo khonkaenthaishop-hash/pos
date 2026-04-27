@@ -4,7 +4,7 @@
  * RawBT app on Android forwards to printer via TCP/IP
  */
 
-import type { ReceiptData } from './escpos/receiptFormatter';
+import type { ReceiptData } from './escpos/receiptBuilder';
 
 export type { ReceiptData };
 
@@ -58,8 +58,11 @@ function buildQr(content: string, size = 6): Uint8Array {
 }
 
 // ─── Build full ESC/POS payload in browser ─────────────────────
-async function buildEscPos(receipt: ReceiptData & { openDrawer?: boolean; promptPayQr?: string; qrSize?: number }): Promise<Uint8Array> {
-  const { buildReceipt: formatText } = await import('./escpos/receiptFormatter') as { buildReceipt: (d: ReceiptData) => string };
+async function buildEscPos(receipt: ReceiptData): Promise<Uint8Array> {
+  const { buildReceipt: formatText } =
+    (await import('./escpos/receiptFormatter')) as {
+      buildReceipt: (d: ReceiptData) => string;
+    };
   const text = formatText(receipt);
 
   const lines  = text.split('\n');
@@ -99,11 +102,15 @@ export async function printReceipt(
   _printer?: PrinterConfig,
 ): Promise<void> {
   const payload = await buildEscPos(receipt);
+  // Normalize to an ArrayBuffer-backed view (avoids SharedArrayBuffer typing issues)
+  const payloadCopy = new Uint8Array(payload);
+
+  const body = new Blob([payloadCopy.buffer], { type: 'application/octet-stream' });
 
   const res = await fetch('http://localhost:8080/rawbt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/octet-stream' },
-    body: payload,
+    body,
   });
 
   if (!res.ok) {

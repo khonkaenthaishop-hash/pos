@@ -25,8 +25,8 @@ export default function ReceiptDemoPage() {
         store: {
           headerLines: [
             STORE_INFO.name,
-            STORE_INFO.taglineTh,
-            STORE_INFO.addressZh,
+            STORE_INFO.tagline,
+            STORE_INFO.address,
             STORE_INFO.phone,
           ],
           footerLines: [...STORE_INFO.footerLines],

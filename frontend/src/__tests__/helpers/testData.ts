@@ -2,7 +2,7 @@
  * Test data generators — deterministic, seed-based
  */
 
-import type { ReceiptData } from "@/lib/escpos/receiptFormatter";
+import type { ReceiptData } from "@/lib/escpos/receiptBuilder";
 
 export const STORE = {
   shopName: "KHONKAEN TEST SHOP",

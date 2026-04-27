@@ -160,6 +160,7 @@ export const customersApi = {
   create: (data: Record<string, unknown>) => api.post("/customers", data),
   update: (id: string, data: Record<string, unknown>) =>
     api.patch(`/customers/${id}`, data),
+  remove: (id: string) => api.delete(`/customers/${id}`),
 };
 
 // ── Shipments ────────────────────────────────────────────────────

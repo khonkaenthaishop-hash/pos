@@ -6,6 +6,7 @@ import { Customer } from './customer.entity';
 
 const mockRepo = {
   find: jest.fn(),
+  findAndCount: jest.fn(),
   findOne: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
@@ -35,21 +36,39 @@ describe('CustomersController', () => {
   describe('GET /customers', () => {
     it('returns list when no search', async () => {
       const customers = [{ id: 'c1', name: 'John' }];
-      mockRepo.find.mockResolvedValue(customers);
+      mockRepo.findAndCount.mockResolvedValue([customers, customers.length]);
 
       const result = await controller.findAll();
-      expect(result).toEqual(customers);
+      expect(result).toEqual({
+        items: customers,
+        total: customers.length,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
     });
 
     it('uses query builder when search is provided', async () => {
       const qb = {
         where: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([{ id: 'c2', name: 'Jane' }]),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([
+          [{ id: 'c2', name: 'Jane' }],
+          1,
+        ]),
       };
       mockRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await controller.findAll('Jane');
-      expect(result).toEqual([{ id: 'c2', name: 'Jane' }]);
+      expect(result).toEqual({
+        items: [{ id: 'c2', name: 'Jane' }],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
     });
   });
 
