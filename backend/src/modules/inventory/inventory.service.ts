@@ -483,18 +483,18 @@ export class InventoryService {
       .createQueryBuilder("t")
       .leftJoinAndSelect("t.product", "product")
       .leftJoinAndSelect("t.user", "user")
-      .orderBy("t.created_at", "DESC")
+      .orderBy("t.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
 
     if (query?.productId)
-      qb.andWhere("t.product_id = :pid", { pid: query.productId });
+      qb.andWhere("t.productId = :pid", { pid: query.productId });
     if (query?.type)
-      qb.andWhere("t.transaction_type = :type", { type: query.type });
+      qb.andWhere("t.transactionType = :type", { type: query.type });
     if (query?.reasonCode)
-      qb.andWhere("t.reason_code = :rc", { rc: query.reasonCode });
+      qb.andWhere("t.reasonCode = :rc", { rc: query.reasonCode });
     if (query?.from && query?.to) {
-      qb.andWhere("t.created_at BETWEEN :from AND :to", {
+      qb.andWhere("t.createdAt BETWEEN :from AND :to", {
         from: new Date(query.from),
         to: new Date(query.to + "T23:59:59"),
       });
@@ -526,18 +526,18 @@ export class InventoryService {
       .createQueryBuilder("m")
       .leftJoinAndSelect("m.product", "product")
       .leftJoinAndSelect("m.user", "user")
-      .orderBy("m.created_at", "DESC")
+      .orderBy("m.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
 
     if (query?.productId)
-      qb.andWhere("m.product_id = :pid", { pid: query.productId });
+      qb.andWhere("m.productId = :pid", { pid: query.productId });
     if (query?.type)
-      qb.andWhere("m.movement_type = :type", { type: query.type });
+      qb.andWhere("m.movementType = :type", { type: query.type });
     if (query?.reasonCode)
-      qb.andWhere("m.reason_code = :rc", { rc: query.reasonCode });
+      qb.andWhere("m.reasonCode = :rc", { rc: query.reasonCode });
     if (query?.from && query?.to) {
-      qb.andWhere("m.created_at BETWEEN :from AND :to", {
+      qb.andWhere("m.createdAt BETWEEN :from AND :to", {
         from: new Date(query.from),
         to: new Date(query.to + "T23:59:59"),
       });
@@ -561,9 +561,9 @@ export class InventoryService {
     const rows = await this.movRepo
       .createQueryBuilder("m")
       .leftJoinAndSelect("m.product", "product")
-      .where("m.movement_type = :type", { type: MovementType.OUT })
-      .andWhere("m.created_at BETWEEN :from AND :to", { from, to })
-      .orderBy("m.created_at", "DESC")
+      .where("m.movementType = :type", { type: MovementType.OUT })
+      .andWhere("m.createdAt BETWEEN :from AND :to", { from, to })
+      .orderBy("m.createdAt", "DESC")
       .getMany();
 
     const byReason: Record<
