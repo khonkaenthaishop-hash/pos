@@ -46,8 +46,16 @@ export default function CustomerDropdown({ value, onChange, onCreateNew }: Props
       setIsLoading(true);
       customersApi.list(query || undefined, 1, 20)
         .then(r => {
-          const data = r.data as any;
-          const items = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+          const data: unknown = r.data;
+          const items =
+            Array.isArray(data)
+              ? data
+              : (typeof data === 'object' &&
+                  data !== null &&
+                  'items' in data &&
+                  Array.isArray((data as { items?: unknown }).items))
+                ? (data as { items: unknown[] }).items
+                : [];
           setResults(items as Customer[]);
         })
         .catch(() => {})

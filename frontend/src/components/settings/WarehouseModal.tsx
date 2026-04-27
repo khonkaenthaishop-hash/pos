@@ -35,10 +35,11 @@ export function WarehouseModal({ open, onClose, warehouse, onSaved }: Props) {
 
   const onSubmit = async (data: Warehouse) => {
     try {
+      const payload: Record<string, unknown> = { ...data };
       if (warehouse?.id) {
-        await settingsApi.updateWarehouse(warehouse.id, data as any);
+        await settingsApi.updateWarehouse(warehouse.id, payload);
       } else {
-        await settingsApi.createWarehouse(data as any);
+        await settingsApi.createWarehouse(payload);
       }
       toast.success(warehouse?.id ? 'อัปเดตคลังสินค้าแล้ว' : 'เพิ่มคลังสินค้าแล้ว');
       onSaved();

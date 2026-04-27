@@ -36,6 +36,7 @@ export default function AnalyticsSettingsPage() {
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty, isSubmitting } } = useForm<AnalyticsSettings>({
     defaultValues: DEFAULTS,
   });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedMetrics = watch('defaultMetrics') ?? [];
 
   useEffect(() => {

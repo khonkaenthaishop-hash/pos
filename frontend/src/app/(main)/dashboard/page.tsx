@@ -67,7 +67,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void load(); }, []);
 
   // ─── Chart options ─────────────────────────────────────────────
 

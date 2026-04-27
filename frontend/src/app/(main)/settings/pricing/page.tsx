@@ -32,6 +32,7 @@ export default function PricingSettingsPage() {
     defaultValues: DEFAULTS,
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'wholesaleTiers' });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const enableWholesale = watch('enableWholesale');
 
   useEffect(() => {

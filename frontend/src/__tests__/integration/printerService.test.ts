@@ -85,6 +85,7 @@ describe('sendToPrinter — retry then succeed', () => {
     // ครั้งแรก: port ปิด → ECONNREFUSED
     // ครั้งสอง: เปิด server ก่อนที่ retry จะเกิดขึ้น
     let started = false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const original = sendToPrinter;
 
     // Simulate: start server after 200ms (before 500ms retry delay)

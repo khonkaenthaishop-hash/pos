@@ -37,6 +37,7 @@ export default function NotificationsSettingsPage() {
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty, isSubmitting } } = useForm<NotificationSettings>({
     defaultValues: DEFAULTS,
   });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const enableLine = watch('enableLineNotify');
   const enableEmail = watch('enableEmail');
 

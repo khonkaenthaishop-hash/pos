@@ -9,7 +9,7 @@ import type { ReceiptData } from './escpos/receiptBuilder';
 export type { ReceiptData };
 
 export type PrinterConfig = {
-  host: string;       // kept for compatibility — RawBT handles TCP routing
+  host: string;
   port?: number;
 };
 
@@ -99,8 +99,35 @@ async function buildEscPos(receipt: ReceiptData): Promise<Uint8Array> {
 // ─── Send to RawBT on Android (localhost:8080) ─────────────────
 export async function printReceipt(
   receipt: ReceiptData,
-  _printer?: PrinterConfig,
+  printer?: PrinterConfig,
 ): Promise<void> {
+  if (printer?.host) {
+    const res = await fetch('/api/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receipt, printer }),
+    });
+
+    const json: unknown = await res.json().catch(() => null);
+    if (!res.ok) {
+      const errorMessage =
+        typeof json === 'object' && json !== null && 'error' in json
+          ? String((json as { error?: unknown }).error)
+          : `Print API error: ${res.status}`;
+      throw new Error(errorMessage);
+    }
+
+    if (!(typeof json === 'object' && json !== null && (json as { success?: unknown }).success === true)) {
+      const errorMessage =
+        typeof json === 'object' && json !== null && 'error' in json
+          ? String((json as { error?: unknown }).error)
+          : 'Print failed';
+      throw new Error(errorMessage);
+    }
+
+    return;
+  }
+
   const payload = await buildEscPos(receipt);
   // Normalize to an ArrayBuffer-backed view (avoids SharedArrayBuffer typing issues)
   const payloadCopy = new Uint8Array(payload);

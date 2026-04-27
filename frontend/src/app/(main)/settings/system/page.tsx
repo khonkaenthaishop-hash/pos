@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Download, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { SettingsPageShell } from '@/components/settings/SettingsPageShell';
-import { SettingSection, FieldRow } from '@/components/settings/SettingSection';
+import { SettingSection } from '@/components/settings/SettingSection';
 import { SaveBar } from '@/components/settings/SaveBar';
 import { useSettings } from '@/hooks/useSettings';
 import { settingsApi } from '@/lib/api';

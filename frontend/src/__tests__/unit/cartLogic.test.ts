@@ -172,7 +172,7 @@ describe('computePromoDiscount', () => {
 
 describe('payment edge cases', () => {
   it('500+ SKU total sums correctly', () => {
-    const items = Array.from({ length: 500 }, (_, i) => ({
+    const items = Array.from({ length: 500 }, () => ({
       retailPrice: 9.99,
       qty: 1,
       itemDiscount: 0,

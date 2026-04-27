@@ -181,6 +181,7 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
           >
             {imagePreview ? (
               <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imagePreview} alt="product" className="w-full h-full object-contain" />
                 <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg flex items-center gap-1">
                   <RefreshCw size={11} /> Retake

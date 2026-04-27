@@ -39,6 +39,7 @@ export default function SecuritySettingsPage() {
   const { register, handleSubmit, reset, watch, formState: { isDirty, isSubmitting } } = useForm<SecuritySettings>({
     defaultValues: DEFAULTS,
   });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const enableIpWhitelist = watch('enableIpWhitelist');
   const enable2fa = watch('enable2fa');
 

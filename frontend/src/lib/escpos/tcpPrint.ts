@@ -31,7 +31,8 @@ export function sendToTcpPrinter(
       if (settled) return;
       settled = true;
       socket.destroy();
-      err ? reject(err) : resolve();
+      if (err) reject(err);
+      else resolve();
     };
 
     socket.setTimeout(timeout);

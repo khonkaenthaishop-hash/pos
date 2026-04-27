@@ -36,6 +36,7 @@ export default function AiSettingsPage() {
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty, isSubmitting } } = useForm<AiSettings>({
     defaultValues: DEFAULTS,
   });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const enableAi = watch('enableAi');
   const provider = watch('aiProvider');
 
