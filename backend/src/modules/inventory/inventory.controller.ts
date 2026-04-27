@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { InventoryService } from "./inventory.service";
@@ -22,6 +23,7 @@ import { AdjustDto } from "./dto/adjust.dto";
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller("inventory")
 export class InventoryController {
+  private readonly logger = new Logger(InventoryController.name);
   constructor(private svc: InventoryService) {}
 
   // ── Reason codes ────────────────────────────────────────────────
@@ -32,7 +34,7 @@ export class InventoryController {
 
   // ── Transactions ────────────────────────────────────────────────
   @Get("transactions")
-  listTransactions(
+  async listTransactions(
     @Query("productId") productId?: string,
     @Query("type") type?: string,
     @Query("reasonCode") reasonCode?: string,
@@ -41,15 +43,20 @@ export class InventoryController {
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.svc.listTransactions({
-      productId,
-      type,
-      reasonCode,
-      from,
-      to,
-      page: Number(page) || 1,
-      limit: Number(limit) || 50,
-    });
+    try {
+      return await this.svc.listTransactions({
+        productId,
+        type,
+        reasonCode,
+        from,
+        to,
+        page: Number(page) || 1,
+        limit: Number(limit) || 50,
+      });
+    } catch (err) {
+      this.logger.error('listTransactions failed', err instanceof Error ? err.stack : String(err));
+      throw err;
+    }
   }
 
   // ── Goods Receipt ───────────────────────────────────────────────
