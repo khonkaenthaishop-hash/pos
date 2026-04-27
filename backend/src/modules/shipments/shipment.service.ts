@@ -42,8 +42,10 @@ export class ShipmentService {
   async findAll(search?: string, page = 1, limit = 20) {
     const qb = this.shipmentRepo
       .createQueryBuilder("s")
-      .leftJoinAndSelect("s.order", "order")
-      .leftJoinAndSelect("order.customer", "customer")
+      .leftJoin("s.order", "order")
+      .addSelect(["order.id", "order.orderNo", "order.status", "order.totalAmount", "order.customerId", "order.customerName"])
+      .leftJoin("order.customer", "customer")
+      .addSelect(["customer.id", "customer.name", "customer.phone"])
       .orderBy("s.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
