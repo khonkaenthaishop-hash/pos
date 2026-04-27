@@ -1,6 +1,6 @@
 {
   "buildCommand": "cd frontend && DISABLE_ESLINT_PLUGIN=true pnpm build",
   "outputDirectory": "frontend/.next",
-  "installCommand": "corepack enable && corepack prepare pnpm@latest --activate && cd frontend && pnpm install",
+  "installCommand": "npm install -g pnpm@10 && cd frontend && pnpm install",
   "framework": "nextjs"
 }
