@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+build/
+.env.local
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage/
+_backup/
+.pnpm-store/
+backend/.pnpm-store/
+frontend/.pnpm-store/
+{backend,frontend,docs}
