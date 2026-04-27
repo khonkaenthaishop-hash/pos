@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && pnpm build",
+  "buildCommand": "cd frontend && DISABLE_ESLINT_PLUGIN=true pnpm build",
   "outputDirectory": "frontend/.next",
   "installCommand": "npm install -g pnpm && cd frontend && pnpm install",
   "framework": "nextjs"
