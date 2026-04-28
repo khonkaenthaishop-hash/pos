@@ -42,17 +42,14 @@ export class ShipmentService {
   async findAll(search?: string, page = 1, limit = 20) {
     const qb = this.shipmentRepo
       .createQueryBuilder("s")
-      .leftJoin("s.order", "order")
-      .addSelect(["order.id", "order.orderNo", "order.status", "order.totalAmount", "order.customerId", "order.customerName"])
-      .leftJoin("order.customer", "customer")
-      .addSelect(["customer.id", "customer.name", "customer.phone"])
+      .leftJoinAndSelect("s.order", "order")
       .orderBy("s.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
 
     if (search) {
       qb.andWhere(
-        "(s.orderNumber ILIKE :search OR s.trackingNumber ILIKE :search OR customer.name ILIKE :search)",
+        "(s.orderNumber ILIKE :search OR s.trackingNumber ILIKE :search)",
         { search: `%${search}%` },
       );
     }
