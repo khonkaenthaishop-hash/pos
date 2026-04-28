@@ -74,6 +74,8 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
   const [isScanning, setIsScanning]     = useState(false);
   const [isSaving, setIsSaving]         = useState(false);
   const [scanned, setScanned]           = useState(false);
+  const [formVisible, setFormVisible]   = useState(false);
+  const showForm = scanned || formVisible;
 
   const [nameTh, setNameTh]             = useState('');
   const [nameEn, setNameEn]             = useState('');
@@ -100,8 +102,9 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setScanned(false);
+    setFormVisible(true);
     setNameTh(''); setNameEn(''); setBarcode(''); setPrice('');
-    setSku(''); setUnit(''); setCategoryId(''); setExpiryDate(''); setLocationCode(''); setImageUrl('');
+    setSku(generateSku()); setUnit(''); setCategoryId(''); setExpiryDate(''); setLocationCode(''); setImageUrl('');
     e.target.value = '';
   }
 
@@ -109,14 +112,14 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
     if (!imageFile) return;
     setIsScanning(true);
     try {
-      const newSku = generateSku();
+      const newSku = sku || generateSku();
       const [info, url] = await Promise.all([
         scanProduct(imageFile),
         uploadImage(imageFile, newSku).catch(() => ''),
       ]);
-      setNameTh(info.nameTh);
-      setNameEn(info.nameEn);
-      setBarcode(info.barcode);
+      setNameTh(info.nameTh || nameTh);
+      setNameEn(info.nameEn || nameEn);
+      setBarcode(info.barcode || barcode);
       setSku(newSku);
       setImageUrl(url);
       setScanned(true);
@@ -207,7 +210,7 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
           />
 
           {/* Scan button */}
-          {imagePreview && !scanned && (
+          {imagePreview && !scanned && showForm && (
             <button
               onClick={handleScan}
               disabled={isScanning}
@@ -220,12 +223,14 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
             </button>
           )}
 
-          {/* Form after scan */}
-          {scanned && (
+          {/* Form after photo taken */}
+          {showForm && (
             <div className="space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-                <Check size={13} /> Done — review and edit if needed
-              </div>
+              {scanned && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
+                  <Check size={13} /> AI filled — review and edit if needed
+                </div>
+              )}
 
               {/* Thai name */}
               <div>
@@ -314,7 +319,7 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
 
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={() => { setScanned(false); cameraInputRef.current?.click(); }}
+                  onClick={() => { setScanned(false); setFormVisible(false); cameraInputRef.current?.click(); }}
                   className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1">
                   <RefreshCw size={13} /> Retake
                 </button>
