@@ -16,7 +16,7 @@ interface ReceiptSettings {
   showPhone: boolean;
   showAddress: boolean;
   fontSize: "sm" | "md" | "lg";
-  receiptWidth: 55 | 72;
+  receiptWidth: 55 | 58 | 72 | 80;
 }
 
 const DEFAULTS: ReceiptSettings = {

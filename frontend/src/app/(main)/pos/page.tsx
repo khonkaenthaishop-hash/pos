@@ -125,6 +125,7 @@ type ReceiptSettings = {
   footerLine1?: string;
   footerLine2?: string;
   footerLine3?: string;
+  receiptWidth?: 55 | 72;
 };
 
 type CashierSession = {

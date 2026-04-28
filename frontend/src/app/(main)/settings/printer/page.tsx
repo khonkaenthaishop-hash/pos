@@ -9,7 +9,7 @@ import { useSettings } from '@/hooks/useSettings';
 interface PrinterSettings {
   printerIp: string;
   printerPort: number;
-  paperWidth: 55 | 72;
+  paperWidth: 55 | 58 | 72 | 80;
   encoding: string;
   /** ESC/POS codepage number for `ESC t n` */
   codePage: number;

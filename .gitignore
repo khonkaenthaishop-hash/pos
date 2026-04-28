@@ -14,3 +14,4 @@ backend/.pnpm-store/
 frontend/.pnpm-store/
 {backend,frontend,docs}
 .vercel
+frontend/next-env.d.ts
