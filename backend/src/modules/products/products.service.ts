@@ -42,12 +42,14 @@ export class ProductsService {
       qb.where('p.is_active = true');
     }
 
-    if (query?.search) {
-      const condition = '(p.name_th ILIKE :s OR p.barcode = :exact OR p.pack_barcode = :exact OR p.sku ILIKE :s)';
-      query?.includeInactive
-        ? qb.where(condition, { s: `%${query.search}%`, exact: query.search })
-        : qb.andWhere(condition, { s: `%${query.search}%`, exact: query.search });
-    }
+	    if (query?.search) {
+	      const condition = '(p.name_th ILIKE :s OR p.barcode = :exact OR p.pack_barcode = :exact OR p.sku ILIKE :s)';
+	      if (query?.includeInactive) {
+	        qb.where(condition, { s: `%${query.search}%`, exact: query.search });
+	      } else {
+	        qb.andWhere(condition, { s: `%${query.search}%`, exact: query.search });
+	      }
+	    }
     if (query?.categoryId) {
       qb.andWhere('p.category_id = :cat', { cat: query.categoryId });
     }
@@ -297,7 +299,7 @@ export class ProductsService {
       if (existingLocs.length > 0) {
         // Distribute adjustment proportionally across existing locations,
         // or simply set the first location to reflect the new total
-        const totalInLocs = existingLocs.reduce((s, l) => s + Number(l.quantity), 0);
+        const _totalInLocs = existingLocs.reduce((s, l) => s + Number(l.quantity), 0);
         let remaining = adjustment;
         for (const loc of existingLocs) {
           const locQty = Number(loc.quantity);

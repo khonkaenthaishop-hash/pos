@@ -16,7 +16,7 @@ const mockRepo = {
 
 describe('CustomersController', () => {
   let controller: CustomersController;
-  let service: CustomersService;
+  let _service: CustomersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -28,7 +28,7 @@ describe('CustomersController', () => {
     }).compile();
 
     controller = module.get<CustomersController>(CustomersController);
-    service = module.get<CustomersService>(CustomersService);
+    _service = module.get<CustomersService>(CustomersService);
     jest.clearAllMocks();
   });
 
