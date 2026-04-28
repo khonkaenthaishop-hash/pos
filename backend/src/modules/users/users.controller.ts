@@ -47,6 +47,47 @@ class CreateUserDto {
   phone?: string;
 }
 
+class UpdateUserDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  @Matches(/^[a-zA-Z0-9_]+$/, { message: 'Username ใช้ได้เฉพาะตัวอักษร ตัวเลข และ _' })
+  username?: string;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  nameTh?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  nameZh?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  nameEn?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phone?: string;
+}
+
+class ResetPasswordDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  password?: string;
+}
+
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -106,5 +147,39 @@ export class UsersController {
       newValue: { isActive: true, username: user.username },
     });
     return user;
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() actor: any,
+  ) {
+    // Managers can update profile fields, but cannot change username/role.
+    if (actor.role === UserRole.MANAGER) {
+      if (dto.username || dto.role) {
+        throw new BadRequestException('ไม่มีสิทธิ์แก้ไข username/role');
+      }
+    }
+    return this.usersService.update(id, dto);
+  }
+
+  @Patch(':id/reset-password')
+  @Roles(UserRole.OWNER)
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+    @CurrentUser() actor: any,
+  ) {
+    if (actor.id === id) {
+      throw new BadRequestException('กรุณาเปลี่ยนรหัสผ่านผ่านเมนูของตัวเอง');
+    }
+    const tempPassword =
+      dto.password && dto.password.trim()
+        ? dto.password.trim()
+        : `POS-${Math.random().toString(36).slice(2, 8).toUpperCase()}${Math.floor(Math.random() * 90 + 10)}`;
+    await this.usersService.changePassword(id, tempPassword);
+    return { tempPassword };
   }
 }

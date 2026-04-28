@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Image from "next/image";
 
 export function ReceiptPrint({
   text,
@@ -24,11 +23,15 @@ export function ReceiptPrint({
   );
 
   return (
-    <div className="bg-white text-black">
+    // NOTE: Avoid Tailwind classes here because html2canvas cannot parse some modern color functions (e.g. oklch).
+    // Inline styles keep PNG export working.
+    <div style={{ backgroundColor: "#ffffff", color: "#000000" }}>
       <style>{pageStyle}</style>
       <div
-        className="mx-auto px-2 py-2"
         style={{
+          marginLeft: "auto",
+          marginRight: "auto",
+          padding: "8px",
           width: `${widthMm}mm`,
           fontFamily:
             "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
@@ -41,15 +44,29 @@ export function ReceiptPrint({
       </div>
 
       {qrImageUrl ? (
-        <div className="mx-auto pb-4" style={{ width: `${widthMm}mm` }}>
-          <div className="flex justify-center">
+        <div
+          style={{
+            marginLeft: "auto",
+            marginRight: "auto",
+            paddingBottom: "16px",
+            width: `${widthMm}mm`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center" }}>
             <div style={{ width: "40mm", height: "40mm", position: "relative" }}>
-              <Image
+              {/* Use plain <img> so html2canvas can export PNG without CORS-taint issues */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={qrImageUrl}
                 alt="QR"
-                fill
-                sizes="160px"
-                style={{ objectFit: "contain" }}
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
               />
             </div>
           </div>

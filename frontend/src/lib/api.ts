@@ -227,6 +227,9 @@ export const auditApi = {
 export const usersApi = {
   list: () => api.get("/users"),
   create: (data: Record<string, unknown>) => api.post("/users", data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/users/${id}`, data),
+  resetPassword: (id: string, data?: Record<string, unknown>) =>
+    api.patch(`/users/${id}/reset-password`, data || {}),
   deactivate: (id: string) => api.patch(`/users/${id}/deactivate`),
   activate: (id: string) => api.patch(`/users/${id}/activate`),
 };

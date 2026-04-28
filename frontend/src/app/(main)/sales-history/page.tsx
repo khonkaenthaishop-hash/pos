@@ -89,13 +89,130 @@ function fmtDate(d?: string) {
 }
 
 // ─── Save element as PNG ────────────────────────────────────────
-async function saveAsPng(el: HTMLElement, filename: string) {
-  const { default: html2canvas } = await import("html2canvas");
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("โหลดรูปไม่สำเร็จ"));
+    img.src = src;
+  });
+}
+
+async function buildReceiptPngBlob(opts: {
+  receiptText: string;
+  widthMm: number;
+  qrImageUrl?: string;
+}): Promise<Blob> {
+  const { receiptText, widthMm, qrImageUrl } = opts;
+  const dpr = typeof window !== "undefined" ? Math.max(1, Math.floor(window.devicePixelRatio || 1)) : 1;
+
+  // Use mm → px conversion suitable for screen export
+  const pxPerMm = 12; // ~304dpi at dpr=1, good enough for PNG sharing
+  const widthPx = Math.round(widthMm * pxPerMm * dpr);
+
+  const fontSize = Math.round(12 * dpr);
+  const lineHeight = Math.round(fontSize * 1.35);
+  const padding = Math.round(8 * dpr);
+
+  const lines = String(receiptText || "").split("\n");
+  const qrSizePx = qrImageUrl ? Math.round(160 * dpr) : 0;
+  const qrGap = qrImageUrl ? Math.round(10 * dpr) : 0;
+
+  // Temporary canvas for measuring text
+  const measureCanvas = document.createElement("canvas");
+  const mctx = measureCanvas.getContext("2d");
+  if (!mctx) throw new Error("Canvas 2D context not available");
+  mctx.font =
+    `${fontSize}px ` +
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+
+  const maxTextWidth = lines.reduce((mx, l) => Math.max(mx, mctx.measureText(l).width), 0);
+  const contentW = Math.min(widthPx, Math.max(padding * 2 + Math.ceil(maxTextWidth), Math.round(220 * dpr)));
+  const textH = padding * 2 + lines.length * lineHeight;
+  const contentH = textH + (qrImageUrl ? qrGap + qrSizePx + padding : 0);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = contentW;
+  canvas.height = contentH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context not available");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+  ctx.font =
+    `${fontSize}px ` +
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+
+  let y = padding;
+  for (const l of lines) {
+    ctx.fillText(l, padding, y);
+    y += lineHeight;
+  }
+
+  if (qrImageUrl) {
+    const img = await loadImage(qrImageUrl);
+    const x = Math.round((canvas.width - qrSizePx) / 2);
+    y += qrGap;
+    ctx.drawImage(img, x, y, qrSizePx, qrSizePx);
+  }
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    try {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob returned null"))), "image/png");
+    } catch (e) {
+      reject(e);
+    }
+  });
+  return blob;
+}
+
+async function saveAsPng(opts: { filename: string; receiptText: string; widthMm: number; qrImageUrl?: string }) {
+  const blob = await buildReceiptPngBlob({
+    receiptText: opts.receiptText,
+    widthMm: opts.widthMm,
+    qrImageUrl: opts.qrImageUrl,
+  });
+  const filename = opts.filename;
+
+  const file = new File([blob], filename, { type: "image/png" });
+  const canShareFiles =
+    typeof navigator !== "undefined" &&
+    "canShare" in navigator &&
+    typeof (navigator as unknown as { canShare?: (d: unknown) => boolean }).canShare === "function" &&
+    (navigator as unknown as { canShare: (d: unknown) => boolean }).canShare({ files: [file] });
+
+  if (canShareFiles && typeof (navigator as unknown as { share?: (d: unknown) => Promise<void> }).share === "function") {
+    await (navigator as unknown as { share: (d: unknown) => Promise<void> }).share({
+      files: [file],
+      title: filename,
+    });
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isIOS = /iPad|iPhone|iPod/i.test(ua);
+
+  // iOS Safari often ignores the download attribute. Open the image in a new tab as a reliable fallback.
+  if (isIOS) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return;
+  }
+
   const link = document.createElement("a");
   link.download = filename;
-  link.href = canvas.toDataURL("image/png");
+  link.href = url;
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
   link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 // ─── Receipt modal ──────────────────────────────────────────────
@@ -119,10 +236,19 @@ function ReceiptModal({
   const handleSavePng = async () => {
     if (!receiptRef.current) return;
     try {
-      await saveAsPng(receiptRef.current, `receipt-${order.orderNo || order.id}.png`);
+      await saveAsPng({
+        filename: `receipt-${order.orderNo || order.id}.png`,
+        receiptText,
+        widthMm,
+        qrImageUrl: STORE_INFO.qrImageUrl,
+      });
       toast.success("บันทึกรูปสำเร็จ");
-    } catch {
-      toast.error("บันทึกรูปไม่สำเร็จ");
+    } catch (err) {
+      // Surface the real error for troubleshooting (CORS/tainted canvas is common)
+      console.error("saveAsPng failed:", err);
+      const message =
+        err instanceof Error ? err.message : "บันทึกรูปไม่สำเร็จ";
+      toast.error(message || "บันทึกรูปไม่สำเร็จ");
     }
   };
 

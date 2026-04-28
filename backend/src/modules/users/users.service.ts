@@ -75,10 +75,37 @@ export class UsersService {
 
   async update(
     id: string,
-    dto: { nameTh?: string; nameZh?: string; nameEn?: string; phone?: string; role?: UserRole },
+    dto: {
+      username?: string;
+      nameTh?: string;
+      nameZh?: string;
+      nameEn?: string;
+      phone?: string;
+      role?: UserRole;
+    },
   ): Promise<User> {
     const user = await this.findById(id);
-    Object.assign(user, dto);
+    if (dto.username && dto.username.trim() !== user.username) {
+      if (dto.username.trim().length < 3) {
+        throw new BadRequestException('Username ต้องมีอย่างน้อย 3 ตัวอักษร');
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(dto.username.trim())) {
+        throw new BadRequestException('Username ใช้ได้เฉพาะตัวอักษร ตัวเลข และ _ เท่านั้น');
+      }
+      const existing = await this.findByUsername(dto.username.trim());
+      if (existing && existing.id !== user.id) {
+        throw new ConflictException('Username นี้มีอยู่แล้ว');
+      }
+      user.username = dto.username.trim();
+    }
+
+    Object.assign(user, {
+      ...(dto.nameTh !== undefined ? { nameTh: dto.nameTh } : {}),
+      ...(dto.nameZh !== undefined ? { nameZh: dto.nameZh } : {}),
+      ...(dto.nameEn !== undefined ? { nameEn: dto.nameEn } : {}),
+      ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+      ...(dto.role !== undefined ? { role: dto.role } : {}),
+    });
     return this.usersRepo.save(user);
   }
 

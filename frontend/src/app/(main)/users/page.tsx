@@ -3,13 +3,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/lib/api';
-import { CheckCircle, Loader2, UserCheck, UserPlus, Users, UserX } from 'lucide-react';
+import { CheckCircle, KeyRound, Loader2, Pencil, UserCheck, UserPlus, Users, UserX, X } from 'lucide-react';
 
 type User = Record<string, unknown> & {
   id: string;
   username: string;
   role: string;
   nameTh?: string | null;
+  nameEn?: string | null;
+  nameZh?: string | null;
   phone?: string | null;
   isActive?: boolean;
   createdAt?: string;
@@ -33,6 +35,7 @@ function passwordStrength(pw: string): { label: string; color: string } {
 export default function UsersPage() {
   const { data: session } = useSession();
   const currentUserId = (session?.user as Record<string, string> | undefined)?.id || '';
+  const currentRole = (session?.user as Record<string, string> | undefined)?.role || '';
 
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +49,21 @@ export default function UsersPage() {
     phone: '',
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({
+    username: '',
+    role: 'staff',
+    nameTh: '',
+    nameEn: '',
+    nameZh: '',
+    phone: '',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   const pwStrength = passwordStrength(form.password);
 
@@ -118,6 +136,71 @@ export default function UsersPage() {
       toast.error(e.response?.data?.message || 'ทำรายการไม่สำเร็จ');
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const openEdit = (u: User) => {
+    setEditUser(u);
+    setEditForm({
+      username: String(u.username || ''),
+      role: String(u.role || 'staff'),
+      nameTh: String(u.nameTh || ''),
+      nameEn: String(u.nameEn || ''),
+      nameZh: String(u.nameZh || ''),
+      phone: String(u.phone || ''),
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    if (!editForm.username.trim()) { toast.error('กรุณากรอก Username'); return; }
+    setIsSavingEdit(true);
+    try {
+      await usersApi.update(editUser.id, {
+        username: editForm.username.trim(),
+        role: editForm.role,
+        nameTh: editForm.nameTh.trim() || null,
+        nameEn: editForm.nameEn.trim() || null,
+        nameZh: editForm.nameZh.trim() || null,
+        phone: editForm.phone.trim() || null,
+      });
+      toast.success('บันทึกแล้ว');
+      setEditUser(null);
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'บันทึกไม่สำเร็จ');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const openResetPassword = (u: User) => {
+    setResetUser(u);
+    setResetPassword('');
+    setTempPassword(null);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    if (resetUser.id === currentUserId) { toast.error('เปลี่ยนรหัสผ่านบัญชีตัวเองไม่ได้จากหน้านี้'); return; }
+    if (resetPassword && resetPassword.length < 8) { toast.error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
+    setIsResetting(true);
+    try {
+      const res = await usersApi.resetPassword(resetUser.id, resetPassword ? { password: resetPassword } : {});
+      const pw = String((res.data as { tempPassword?: string }).tempPassword || '');
+      setTempPassword(pw || null);
+      if (pw) {
+        await navigator.clipboard.writeText(pw).catch(() => {});
+        toast.success('รีเซ็ตรหัสผ่านแล้ว (คัดลอกแล้ว)');
+      } else {
+        toast.success('รีเซ็ตรหัสผ่านแล้ว');
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'รีเซ็ตไม่สำเร็จ');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -239,26 +322,51 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        {active ? (
+                        <div className="space-y-2">
                           <button
-                            onClick={() => handleDeactivate(u)}
-                            disabled={busy || isSelf}
-                            title={isSelf ? 'ไม่สามารถปิดบัญชีตัวเองได้' : undefined}
-                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-600 rounded-lg text-xs font-semibold transition"
+                            onClick={() => openEdit(u)}
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition"
                           >
-                            {busy ? <Loader2 size={14} className="animate-spin" /> : <UserX size={14} />}
-                            ปิดใช้งาน
+                            <Pencil size={14} />
+                            แก้ไข
                           </button>
-                        ) : (
                           <button
-                            onClick={() => handleActivate(u)}
-                            disabled={busy}
-                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 text-emerald-600 rounded-lg text-xs font-semibold transition"
+                            onClick={() => openResetPassword(u)}
+                            disabled={isSelf || currentRole !== 'owner'}
+                            title={currentRole !== 'owner' ? 'ต้องเป็น Owner เท่านั้น' : (isSelf ? 'เปลี่ยนรหัสผ่านบัญชีตัวเองไม่ได้จากหน้านี้' : undefined)}
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 text-amber-700 rounded-lg text-xs font-semibold transition"
                           >
-                            {busy ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
-                            เปิดใช้งาน
+                            <KeyRound size={14} />
+                            Reset รหัสผ่าน
                           </button>
-                        )}
+                          {active ? (
+                            <button
+                              onClick={() => handleDeactivate(u)}
+                              disabled={busy || isSelf || currentRole !== 'owner'}
+                              title={
+                                isSelf
+                                  ? 'ไม่สามารถปิดบัญชีตัวเองได้'
+                                  : currentRole !== 'owner'
+                                    ? 'ต้องเป็น Owner เท่านั้น'
+                                    : undefined
+                              }
+                              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-600 rounded-lg text-xs font-semibold transition"
+                            >
+                              {busy ? <Loader2 size={14} className="animate-spin" /> : <UserX size={14} />}
+                              ปิดใช้งาน
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleActivate(u)}
+                              disabled={busy || currentRole !== 'owner'}
+                              title={currentRole !== 'owner' ? 'ต้องเป็น Owner เท่านั้น' : undefined}
+                              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 text-emerald-600 rounded-lg text-xs font-semibold transition"
+                            >
+                              {busy ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
+                              เปิดใช้งาน
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -276,6 +384,141 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Edit modal */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-gray-900">แก้ไขผู้ใช้</div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5">{editUser.username}</div>
+              </div>
+              <button onClick={() => setEditUser(null)} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500">Username</label>
+                <input
+                  value={editForm.username}
+                  onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+                  disabled={currentRole !== 'owner'}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 disabled:bg-gray-50"
+                />
+                {currentRole !== 'owner' && (
+                  <div className="text-[11px] text-gray-400 mt-1">ต้องเป็น Owner เท่านั้น</div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500">Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
+                  disabled={currentRole !== 'owner'}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white disabled:bg-gray-50"
+                >
+                  {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500">Phone</label>
+                <input
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500">ชื่อ (TH)</label>
+                <input
+                  value={editForm.nameTh}
+                  onChange={e => setEditForm(f => ({ ...f, nameTh: e.target.value }))}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500">ชื่อ (EN)</label>
+                <input
+                  value={editForm.nameEn}
+                  onChange={e => setEditForm(f => ({ ...f, nameEn: e.target.value }))}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500">ชื่อ (ZH)</label>
+                <input
+                  value={editForm.nameZh}
+                  onChange={e => setEditForm(f => ({ ...f, nameZh: e.target.value }))}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold">
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-950 disabled:opacity-60 text-white rounded-lg text-sm font-semibold flex items-center gap-2"
+              >
+                {isSavingEdit ? <Loader2 size={16} className="animate-spin" /> : <Pencil size={16} />}
+                บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset password modal */}
+      {resetUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="text-sm font-bold text-gray-900">Reset รหัสผ่าน</div>
+              <button onClick={() => setResetUser(null)} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="text-sm text-gray-600">
+                ผู้ใช้: <span className="font-semibold text-gray-900">{resetUser.nameTh || resetUser.username}</span>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500">ตั้งรหัสผ่านใหม่ (เว้นว่าง = สุ่ม)</label>
+                <input
+                  value={resetPassword}
+                  onChange={e => setResetPassword(e.target.value)}
+                  type="password"
+                  placeholder="อย่างน้อย 8 ตัวอักษร"
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+              {tempPassword && (
+                <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-3 text-sm">
+                  <div className="text-xs text-emerald-700 font-semibold">รหัสผ่านใหม่ (คัดลอกแล้ว)</div>
+                  <div className="mt-1 font-mono text-emerald-800">{tempPassword}</div>
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setResetUser(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold">
+                ปิด
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={isResetting}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-lg text-sm font-semibold flex items-center gap-2"
+              >
+                {isResetting ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                ยืนยัน Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
