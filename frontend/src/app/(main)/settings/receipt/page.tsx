@@ -16,7 +16,7 @@ interface ReceiptSettings {
   showPhone: boolean;
   showAddress: boolean;
   fontSize: "sm" | "md" | "lg";
-  receiptWidth: 58 | 80;
+  receiptWidth: 55 | 72;
 }
 
 const DEFAULTS: ReceiptSettings = {
@@ -29,7 +29,7 @@ const DEFAULTS: ReceiptSettings = {
   showPhone: true,
   showAddress: false,
   fontSize: "md",
-  receiptWidth: 80,
+  receiptWidth: 72,
 };
 
 function ReceiptPreview({ data }: { data: ReceiptSettings }) {
@@ -93,7 +93,19 @@ export default function ReceiptSettingsPage() {
   const watched = useWatch({ control });
 
   useEffect(() => {
-    if (data) reset({ ...DEFAULTS, ...data });
+    if (data) {
+      const normalized = {
+        ...DEFAULTS,
+        ...data,
+        receiptWidth:
+          data.receiptWidth === 58
+            ? 55
+            : data.receiptWidth === 80
+              ? 72
+              : data.receiptWidth,
+      };
+      reset(normalized);
+    }
   }, [data, reset]);
 
   const onSubmit = async (values: ReceiptSettings) => {
@@ -169,8 +181,8 @@ export default function ReceiptSettingsPage() {
                   {...register("receiptWidth", { valueAsNumber: true })}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  <option value={58}>58 mm</option>
-                  <option value={80}>80 mm</option>
+                  <option value={55}>55 mm</option>
+                  <option value={72}>72 mm</option>
                 </select>
               </FieldRow>
             </SettingSection>

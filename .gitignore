@@ -6,9 +6,11 @@ build/
 .env
 .DS_Store
 *.log
+*.tsbuildinfo
 coverage/
 _backup/
 .pnpm-store/
 backend/.pnpm-store/
 frontend/.pnpm-store/
 {backend,frontend,docs}
+.vercel

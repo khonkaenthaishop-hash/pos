@@ -39,14 +39,15 @@ class UpdateReceiptDto {
   @IsOptional() @IsBoolean() showPhone?: boolean;
   @IsOptional() @IsBoolean() showAddress?: boolean;
   @IsOptional() @IsString() @IsIn(['sm', 'md', 'lg']) fontSize?: string;
-  @IsOptional() @IsNumber() @IsIn([58, 80]) receiptWidth?: number;
+  @IsOptional() @IsNumber() @IsIn([55, 58, 72, 80]) receiptWidth?: number;
 }
 
 class UpdatePrinterDto {
   @IsOptional() @IsString() printerIp?: string;
   @IsOptional() @IsNumber() @Min(1) @Max(65535) printerPort?: number;
-  @IsOptional() @IsNumber() @IsIn([58, 80]) paperWidth?: number;
+  @IsOptional() @IsNumber() @IsIn([55, 58, 72, 80]) paperWidth?: number;
   @IsOptional() @IsString() encoding?: string;
+  @IsOptional() @IsNumber() @Min(0) @Max(255) codePage?: number;
   @IsOptional() @IsString() printMode?: string;
   @IsOptional() @IsBoolean() autoPrint?: boolean;
   @IsOptional() @IsNumber() @Min(1) @Max(5) printCopies?: number;
@@ -137,10 +138,6 @@ class UpdateSystemDto {
   @IsOptional() @IsBoolean() maintenanceMode?: boolean;
 }
 
-class UpdateRolesPermsDto {
-  [key: string]: any;
-}
-
 class CreateWarehouseDto {
   @IsString() @MaxLength(120) name: string;
   @IsOptional() @IsString() zone?: string;
@@ -206,7 +203,7 @@ export class SettingsController {
 
   @Patch('roles-perms')
   @Roles(UserRole.OWNER)
-  updateRolesPerms(@Body() dto: UpdateRolesPermsDto) {
+  updateRolesPerms(@Body() dto: Record<string, unknown>) {
     return this.service.updateGroup('roles-perms', dto as any);
   }
 

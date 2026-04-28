@@ -2,37 +2,28 @@
 
 import { useMemo } from "react";
 import { STORE_INFO } from "@/constants/store";
-import { buildReceiptText } from "@/lib/receipt";
+import { buildReceipt as buildThermalReceipt } from "@/lib/escpos/receiptFormatter";
 import { ReceiptPrint } from "@/components/ReceiptPrint";
 
 export default function ReceiptDemoPage() {
   const receiptText = useMemo(() => {
-    return buildReceiptText(
-      {
-        receiptNo: "INV20240619001",
-        issuedAt: new Date("2024-06-19T10:13:00"),
-        cashierName: "Admin",
-        items: [
-          { name: "ลาเต้ร้อน", qty: 1, price: 65.0 },
-          { name: "เค้กช็อกโกแลต", qty: 1, price: 120.0 },
-        ],
-        discount: 0,
-        vatRate: 0.07,
-        payment: { methodLabel: "เงินสด", received: 200.0, change: 2.05 },
-      },
-      {
-        charsPerLine: 48,
-        store: {
-          headerLines: [
-            STORE_INFO.name,
-            STORE_INFO.tagline,
-            STORE_INFO.address,
-            STORE_INFO.phone,
-          ],
-          footerLines: [...STORE_INFO.footerLines],
-        },
-      },
-    );
+    return buildThermalReceipt({
+      headerLines: [STORE_INFO.name, STORE_INFO.tagline, STORE_INFO.address, STORE_INFO.phone].filter(Boolean),
+      receiptNo: "INV20240619001",
+      issuedAt: new Date("2024-06-19T10:13:00"),
+      cashierName: "Admin",
+      items: [
+        { name: "ลาเต้ร้อน", qty: 1, price: 65.0 },
+        { name: "เค้กช็อกโกแลต", qty: 1, price: 120.0 },
+      ],
+      discount: 0,
+      vatRate: 0.07,
+      total: 197.95,
+      paymentMethodLabel: "เงินสด",
+      cash: 200.0,
+      change: 2.05,
+      footerLines: [...STORE_INFO.footerLines],
+    });
   }, []);
 
   return (
@@ -41,7 +32,7 @@ export default function ReceiptDemoPage() {
         <div>
           <h1 className="text-lg font-bold text-gray-900">Receipt Demo</h1>
           <p className="text-xs text-gray-500">
-            กระดาษ 72mm, ตัวอย่าง 48 chars/line
+            กระดาษ 58mm, ตัวอย่าง 32 chars/line (เหมือนเครื่องพิมพ์)
           </p>
         </div>
         <button
@@ -55,7 +46,7 @@ export default function ReceiptDemoPage() {
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <ReceiptPrint
           text={receiptText}
-          widthMm={72}
+          widthMm={58}
           qrImageUrl={STORE_INFO.qrImageUrl}
         />
       </div>

@@ -38,7 +38,8 @@ import {
 } from "@/lib/api";
 import { printReceipt } from "@/lib/printReceipt";
 import { STORE_INFO } from "@/constants/store";
-import { buildReceiptText } from "@/lib/receipt";
+import { buildReceipt as buildThermalReceipt } from "@/lib/escpos/receiptFormatter";
+import { resolveAssetUrl } from "@/lib/resolveAssetUrl";
 import { useSettings } from "@/hooks/useSettings";
 import { ReceiptPrint } from "@/components/ReceiptPrint";
 import CustomerDropdown, { Customer } from "@/components/pos/CustomerDropdown";
@@ -292,6 +293,9 @@ export default function PosPage() {
   const { data: printerSettings } = useSettings<{
     printerIp?: string;
     printerPort?: number;
+    codePage?: number;
+    paperWidth?: 55 | 72;
+    printMode?: string;
   }>("printer");
   const receiptHeaderLines = useMemo(() => {
     const first = receiptSettings?.headerText?.trim() || STORE_INFO.name;
@@ -1003,37 +1007,32 @@ export default function PosPage() {
   // ─── Receipt text ─────────────────────────────────────────────
   const receiptText = useMemo(() => {
     if (!receiptOrder) return "";
-    return buildReceiptText(
-      {
-        receiptNo: String(receiptOrder.orderNo || "—"),
-        issuedAt: receiptOrder.paidAt
-          ? new Date(String(receiptOrder.paidAt))
-          : new Date(),
-        cashierName,
-        items: (receiptOrder.items || []).map((i) => ({
-          name: String(i.productNameEn || i.productNameTh || ""),
-          qty: Number(i.quantity || 0),
-          price: Number(i.unitPrice || 0),
-        })),
-        discount: Number(receiptOrder.discount) || 0,
-        vatRate: includeVat ? 0.07 : 0,
-        total: receiptOrder.total,
-        payment: {
-          methodLabel: paymentMethodLabel(
-            String(receiptOrder.paymentMethod || ""),
-          ),
-          received: receiptOrder.cashReceived,
-          change: receiptOrder.change,
-        },
-      },
-      {
-        charsPerLine: 48,
-        store: {
-          headerLines: receiptHeaderLines,
-          footerLines: receiptFooterLines,
-        },
-      },
-    );
+    return buildThermalReceipt({
+      headerLines: receiptHeaderLines,
+      receiptNo: String(receiptOrder.orderNo || "—"),
+      issuedAt: receiptOrder.paidAt
+        ? new Date(String(receiptOrder.paidAt))
+        : new Date(),
+      cashierName,
+      items: (receiptOrder.items || []).map((i) => ({
+        name: String(i.productNameEn || i.productNameTh || ""),
+        qty: Number(i.quantity || 0),
+        price: Number(i.unitPrice || 0),
+      })),
+      discount: Number(receiptOrder.discount) || 0,
+      vatRate: includeVat ? 0.07 : 0,
+      total: Number(receiptOrder.total || 0),
+      paymentMethodLabel: paymentMethodLabel(
+        String(receiptOrder.paymentMethod || ""),
+      ),
+      cash:
+        typeof receiptOrder.cashReceived === "number"
+          ? receiptOrder.cashReceived
+          : undefined,
+      change:
+        typeof receiptOrder.change === "number" ? receiptOrder.change : undefined,
+      footerLines: receiptFooterLines,
+    });
   }, [
     receiptOrder,
     cashierName,
@@ -1479,7 +1478,7 @@ export default function PosPage() {
             <div className="max-h-[65vh] overflow-y-auto bg-gray-50">
               <ReceiptPrint
                 text={receiptText}
-                widthMm={58}
+                widthMm={receiptSettings?.receiptWidth ?? 55}
                 qrImageUrl={STORE_INFO.qrImageUrl}
               />
             </div>
@@ -1495,9 +1494,7 @@ export default function PosPage() {
                   try {
                     await printReceipt(
                       {
-                        shopName: STORE_INFO.name,
-                        address: `${STORE_INFO.tagline} ${STORE_INFO.address}`,
-                        tel: STORE_INFO.phone,
+                        headerLines: receiptHeaderLines,
                         receiptNo: String(receiptOrder.orderNo || "—"),
                         issuedAt: receiptOrder.paidAt
                           ? new Date(String(receiptOrder.paidAt))
@@ -1510,16 +1507,26 @@ export default function PosPage() {
                           qty: Number(i.quantity || 0),
                           price: Number(i.unitPrice || 0),
                         })),
-                        total: receiptOrder.total ?? 0,
+                        discount: Number(receiptOrder.discount) || 0,
+                        vatRate: includeVat ? 0.07 : 0,
+                        total: Number(receiptOrder.total || 0),
+                        paymentMethodLabel: paymentMethodLabel(
+                          String(receiptOrder.paymentMethod || ""),
+                        ),
                         cash: receiptOrder.cashReceived,
                         change: receiptOrder.change,
                         footerLines: receiptFooterLines,
+                        codePage: printerSettings?.codePage,
+                        paperWidthMm: printerSettings?.paperWidth,
                         openDrawer: isCash,
                       },
-                      {
-                        host: printerSettings?.printerIp || "192.168.1.121",
-                        port: printerSettings?.printerPort || 9100,
-                      },
+                      printerSettings?.printMode === "RAWBT"
+                        ? undefined
+                        : {
+                            host:
+                              printerSettings?.printerIp || "192.168.1.121",
+                            port: printerSettings?.printerPort || 9100,
+                          },
                     );
                     toast.success("พิมพ์ใบเสร็จสำเร็จ");
                   } catch (err) {
@@ -1685,24 +1692,25 @@ export default function PosPage() {
                           <AlertTriangle size={10} /> ต่ำ
                         </span>
                       )}
-                      <div className="aspect-4/3 bg-gray-50 overflow-hidden">
-                        {p.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={String(p.imageUrl)}
-                            alt={p.nameTh}
-                            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-200">
-                            <Receipt size={28} />
-                          </div>
-                        )}
-                      </div>
+	                      <div className="aspect-4/3 bg-gray-50 overflow-hidden">
+	                        <div className="w-full h-full relative">
+	                          <div className="absolute inset-0 flex items-center justify-center text-gray-200">
+	                            <Receipt size={28} />
+	                          </div>
+	                          {resolveAssetUrl(p.imageUrl) ? (
+	                            // eslint-disable-next-line @next/next/no-img-element
+	                            <img
+	                              src={resolveAssetUrl(p.imageUrl)!}
+	                              alt={p.nameTh}
+	                              className="relative z-10 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+	                              onError={(e) => {
+	                                (e.currentTarget as HTMLImageElement).style.display =
+	                                  "none";
+	                              }}
+	                            />
+	                          ) : null}
+	                        </div>
+	                      </div>
                       <div className="p-2.5">
                         <div className="font-semibold text-gray-900 text-sm line-clamp-2">
                           {p.nameTh}

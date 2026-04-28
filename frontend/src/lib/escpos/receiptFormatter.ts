@@ -12,11 +12,12 @@
 export const WIDTH = 32;
 
 // Column widths — must sum to WIDTH exactly
-// name(16) + qty(4) + price(6) + total(6) = 32
-const COL_NAME  = 16;
-const COL_QTY   =  4;
-const COL_PRICE =  6;
-const COL_TOTAL =  6;
+// name(14) + qty(4) + price(7) + total(7) = 32
+// NOTE: price/total need 7 chars to support values like 9999.99
+const COL_NAME = 14;
+const COL_QTY = 4;
+const COL_PRICE = 7;
+const COL_TOTAL = 7;
 
 
 // ─── Unicode-safe primitives ───────────────────────────────────
@@ -43,7 +44,7 @@ export function padRight(text: string, width: number): string {
 /** จัดชิดขวา — ผล: string ที่มีความยาว = width เสมอ */
 export function padLeft(text: string, width: number): string {
   const len = uLen(text);
-  if (len >= width) return uSlice(text, 0, width);
+  if (len >= width) return uSlice(text, len - width, len);
   return ' '.repeat(width - len) + text;
 }
 
@@ -143,14 +144,23 @@ export type ReceiptItem = {
 };
 
 export type ReceiptData = {
-  shopName: string;
+  // If headerLines is provided, it will be used (centered line-by-line).
+  // Otherwise, fallback to shopName/address/tel.
+  headerLines?: string[];
+  shopName?: string;
   address?: string;
   tel?: string;
   receiptNo?: string;
   issuedAt?: Date;
   cashierName?: string;
   items: ReceiptItem[];
-  total: number;
+  // Summary / totals
+  subtotal?: number; // default: computed from items
+  discount?: number; // default: 0
+  vatRate?: number; // default: 0 (e.g. 0.07)
+  vat?: number; // default: computed from (subtotal - discount) * vatRate
+  total: number; // net total
+  paymentMethodLabel?: string;
   cash?: number;
   change?: number;
   footerLines?: string[];
@@ -169,17 +179,23 @@ function formatDate(d: Date): string {
 
 function buildHeader(data: ReceiptData): string[] {
   const lines: string[] = [];
-  lines.push(center(data.shopName, WIDTH));
-  if (data.address)     lines.push(center(data.address, WIDTH));
-  if (data.tel)         lines.push(center(`Tel: ${data.tel}`, WIDTH));
-  if (data.receiptNo)   lines.push(center(`#${data.receiptNo}`, WIDTH));
-  if (data.issuedAt)    lines.push(center(formatDate(data.issuedAt), WIDTH));
+  const headerLines = (data.headerLines ?? []).map((l) => String(l ?? '').trim()).filter(Boolean);
+  if (headerLines.length > 0) {
+    lines.push(...headerLines.map((l) => center(l, WIDTH)));
+  } else {
+    lines.push(center(data.shopName || 'RECEIPT', WIDTH));
+    if (data.address) lines.push(center(data.address, WIDTH));
+    if (data.tel) lines.push(center(`Tel: ${data.tel}`, WIDTH));
+  }
+
+  if (data.receiptNo) lines.push(center(`#${data.receiptNo}`, WIDTH));
+  if (data.issuedAt) lines.push(center(formatDate(data.issuedAt), WIDTH));
   if (data.cashierName) lines.push(center(`Cashier: ${data.cashierName}`, WIDTH));
   return lines;
 }
 
 function buildTableHeader(): string {
-  // ผลรวม: COL_NAME + COL_QTY + COL_PRICE + COL_TOTAL = 48
+  // ผลรวม: COL_NAME + COL_QTY + COL_PRICE + COL_TOTAL = WIDTH
   return (
     padRight('Name',  COL_NAME)  +
     padLeft('Qty',    COL_QTY)   +
@@ -193,7 +209,7 @@ function buildItemLines(item: ReceiptItem): string[] {
   const itemTotal = item.qty * item.price;
   const nameLines = wrapText(item.name, COL_NAME);
 
-  // บรรทัดแรก: name + qty + price + total (รวม = 48)
+  // บรรทัดแรก: name + qty + price + total (รวม = WIDTH)
   lines.push(
     padRight(nameLines[0], COL_NAME)  +
     padLeft(String(item.qty),   COL_QTY)   +
@@ -217,9 +233,24 @@ function buildSummary(data: ReceiptData): string[] {
   const row = (label: string, value: string): string =>
     padRight(label, LABEL_W) + padLeft(value, COL_TOTAL);
 
+  const subtotal = typeof data.subtotal === 'number'
+    ? data.subtotal
+    : data.items.reduce((s, i) => s + i.qty * i.price, 0);
+  const discount = typeof data.discount === 'number' ? data.discount : 0;
+  const baseForVat = Math.max(0, subtotal - discount);
+  const vatRate = typeof data.vatRate === 'number' ? data.vatRate : 0;
+  const vat = typeof data.vat === 'number' ? data.vat : Number((baseForVat * vatRate).toFixed(2));
+
   const lines: string[] = [separator('=')];
-  lines.push(row('TOTAL',  money(data.total)));
-  if (typeof data.cash   === 'number') lines.push(row('CASH',   money(data.cash)));
+  lines.push(row('SUBTOTAL', money(subtotal)));
+  lines.push(row('DISCOUNT', money(discount)));
+  lines.push(row(`VAT ${(vatRate * 100).toFixed(0)}%`, money(vat)));
+  lines.push(separator('-'));
+  lines.push(row('TOTAL', money(data.total)));
+  if (data.paymentMethodLabel) {
+    lines.push(padRight(`PAYMENT: ${data.paymentMethodLabel}`, WIDTH));
+  }
+  if (typeof data.cash === 'number') lines.push(row('CASH', money(data.cash)));
   if (typeof data.change === 'number') lines.push(row('CHANGE', money(data.change)));
   return lines;
 }

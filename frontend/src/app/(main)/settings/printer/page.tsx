@@ -9,8 +9,10 @@ import { useSettings } from '@/hooks/useSettings';
 interface PrinterSettings {
   printerIp: string;
   printerPort: number;
-  paperWidth: 58 | 80;
+  paperWidth: 55 | 72;
   encoding: string;
+  /** ESC/POS codepage number for `ESC t n` */
+  codePage: number;
   printMode: string;
   autoPrint: boolean;
   printCopies: number;
@@ -19,8 +21,10 @@ interface PrinterSettings {
 const DEFAULTS: PrinterSettings = {
   printerIp: '192.168.1.121',
   printerPort: 9100,
-  paperWidth: 80,
+  paperWidth: 72,
   encoding: 'TIS620',
+  // Use the printer self-test value for Thai/PC874 (ESC t n).
+  codePage: 70,
   printMode: 'ESC-POS',
   autoPrint: false,
   printCopies: 1,
@@ -35,7 +39,15 @@ export default function PrinterSettingsPage() {
   });
 
   useEffect(() => {
-    if (data) reset({ ...DEFAULTS, ...data });
+    if (data) {
+      const normalized = {
+        ...DEFAULTS,
+        ...data,
+        paperWidth:
+          data.paperWidth === 58 ? 55 : data.paperWidth === 80 ? 72 : data.paperWidth,
+      };
+      reset(normalized);
+    }
   }, [data, reset]);
 
   const onSubmit = async (values: PrinterSettings) => {
@@ -71,10 +83,26 @@ export default function PrinterSettingsPage() {
 
         <SettingSection title="การพิมพ์">
           <FieldRow label="ความกว้างกระดาษ">
-            <select {...register('paperWidth', { valueAsNumber: true })} className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-              <option value={58}>58 mm</option>
-              <option value={80}>80 mm</option>
-            </select>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value={55}
+                  {...register('paperWidth', { valueAsNumber: true })}
+                  className="accent-orange-500 w-4 h-4"
+                />
+                <span className="text-sm text-slate-700">55 mm</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value={72}
+                  {...register('paperWidth', { valueAsNumber: true })}
+                  className="accent-orange-500 w-4 h-4"
+                />
+                <span className="text-sm text-slate-700">72 mm</span>
+              </label>
+            </div>
           </FieldRow>
           <FieldRow label="Encoding">
             <select {...register('encoding')} className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
@@ -82,9 +110,19 @@ export default function PrinterSettingsPage() {
               <option value="UTF-8">UTF-8</option>
             </select>
           </FieldRow>
+          <FieldRow label="Code page" hint="ค่า ESC t n (Thai/CP874 มักใช้ 26; ดูจาก self-test ของเครื่อง)">
+            <input
+              {...register('codePage', { valueAsNumber: true, min: 0, max: 255 })}
+              type="number"
+              min={0}
+              max={255}
+              className="w-32 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </FieldRow>
           <FieldRow label="โหมดการพิมพ์">
             <select {...register('printMode')} className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-              <option value="ESC-POS">ESC/POS</option>
+              <option value="ESC-POS">ESC/POS (TCP/IP)</option>
+              <option value="RAWBT">Android (RawBT)</option>
               <option value="Star">Star</option>
             </select>
           </FieldRow>

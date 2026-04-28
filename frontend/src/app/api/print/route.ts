@@ -7,14 +7,28 @@ import type { PrinterConfig } from "@/lib/escpos/printerService";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { receipt, printer } = body as {
-      receipt: ReceiptData;
+    const { receipt, printer, payloadBase64 } = body as {
+      receipt?: ReceiptData;
       printer: PrinterConfig;
+      payloadBase64?: string;
     };
 
-    if (!receipt || !printer?.host) {
+    if (!printer?.host) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: receipt, printer.host" },
+        { success: false, error: "Missing required field: printer.host" },
+        { status: 400 },
+      );
+    }
+
+    if (typeof payloadBase64 === "string" && payloadBase64.length > 0) {
+      const buffer = Buffer.from(payloadBase64, "base64");
+      await sendToPrinter(buffer, printer);
+      return NextResponse.json({ success: true });
+    }
+
+    if (!receipt) {
+      return NextResponse.json(
+        { success: false, error: "Missing required field: receipt (or payloadBase64)" },
         { status: 400 },
       );
     }

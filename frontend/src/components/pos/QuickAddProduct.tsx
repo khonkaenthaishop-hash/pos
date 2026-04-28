@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Camera, X, Loader2, Check, ScanBarcode, RefreshCw } from 'lucide-react';
-import { productsApi, categoriesApi } from '@/lib/api';
+import { productsApi, categoriesApi, locationsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 type Props = {
@@ -20,6 +20,12 @@ type Category = {
   id: string;
   nameTh: string;
   nameEn: string;
+};
+
+type LocationRow = {
+  id: number;
+  fullCode: string;
+  isActive?: boolean;
 };
 
 function fileToBase64(file: File): Promise<string> {
@@ -82,17 +88,33 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
   const [barcode, setBarcode]           = useState('');
   const [price, setPrice]               = useState('');
   const [sku, setSku]                   = useState('');
-  const [unit, setUnit]                 = useState('');
+  const [unit, setUnit]                 = useState('ชิ้น');
   const [categoryId, setCategoryId]     = useState('');
   const [expiryDate, setExpiryDate]     = useState('');
-  const [locationCode, setLocationCode] = useState('');
+  const [locationCode, setLocationCode] = useState('FRONT');
   const [imageUrl, setImageUrl]         = useState('');
 
+  const [minStock, setMinStock] = useState('10');
+  const [wholesalePrice, setWholesalePrice] = useState('');
+  const [promoQty, setPromoQty] = useState('');
+  const [promoPrice, setPromoPrice] = useState('');
+  const [wholesaleUnit, setWholesaleUnit] = useState('เซต');
+  const [conversionFactor, setConversionFactor] = useState('1');
+
   const [categories, setCategories] = useState<Category[]>([]);
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [customUnit, setCustomUnit] = useState('');
+  const [customLocation, setCustomLocation] = useState('');
 
   useEffect(() => {
     categoriesApi.list().then(res => {
       setCategories((res.data as Category[]) || []);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    locationsApi.list().then(res => {
+      setLocations(((res.data as LocationRow[]) || []).filter(l => l && l.fullCode));
     }).catch(() => {});
   }, []);
 
@@ -104,7 +126,20 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
     setScanned(false);
     setFormVisible(true);
     setNameTh(''); setNameEn(''); setBarcode(''); setPrice('');
-    setSku(generateSku()); setUnit(''); setCategoryId(''); setExpiryDate(''); setLocationCode(''); setImageUrl('');
+    setSku(generateSku());
+    setUnit('ชิ้น');
+    setCustomUnit('');
+    setCategoryId('');
+    setExpiryDate('');
+    setLocationCode('FRONT');
+    setCustomLocation('');
+    setImageUrl('');
+    setMinStock('10');
+    setWholesalePrice('');
+    setPromoQty('');
+    setPromoPrice('');
+    setWholesaleUnit('เซต');
+    setConversionFactor('1');
     e.target.value = '';
   }
 
@@ -135,17 +170,38 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
     if (!price || Number(price) <= 0) { toast.error('Price required'); return; }
     setIsSaving(true);
     try {
+      const finalSku = sku || generateSku();
+      if (!sku) setSku(finalSku);
+
+      // Ensure imageUrl is persisted even if user skips "Scan" step.
+      let finalImageUrl = imageUrl;
+      if (!finalImageUrl && imageFile) {
+        finalImageUrl = await uploadImage(imageFile, finalSku).catch(() => '');
+        if (finalImageUrl) setImageUrl(finalImageUrl);
+      }
+
+      const finalUnit = unit === '__custom__' ? (customUnit.trim() || 'ชิ้น') : (unit || 'ชิ้น');
+      const finalLocation = locationCode === '__custom__'
+        ? (customLocation.trim() || 'FRONT')
+        : (locationCode || 'FRONT');
+
       await productsApi.create({
         nameTh:       nameTh || nameEn,
         nameEn:       nameEn || undefined,
         barcode:      barcode || undefined,
         retailPrice:  Number(price),
-        sku:          sku || undefined,
-        unit:         unit || undefined,
+        sku:          finalSku || undefined,
+        unit:         finalUnit || undefined,
         categoryId:   categoryId || undefined,
         expiryDate:   expiryDate || undefined,
-        locationCode: locationCode || undefined,
-        imageUrl:     imageUrl || undefined,
+        locationCode: finalLocation || undefined,
+        minStock:     minStock ? Number(minStock) : 10,
+        wholesalePrice: wholesalePrice ? Number(wholesalePrice) : undefined,
+        promoQty:       promoQty ? Number(promoQty) : undefined,
+        promoPrice:     promoPrice ? Number(promoPrice) : undefined,
+        wholesaleUnit:  wholesaleUnit?.trim() || undefined,
+        conversionFactor: conversionFactor ? Number(conversionFactor) : undefined,
+        imageUrl:     finalImageUrl || undefined,
         isApproved:   false,
       });
       toast.success('Product saved');
@@ -283,9 +339,30 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
               {/* Unit */}
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Unit (หน่วยนับ)</label>
-                <input value={unit} onChange={e => setUnit(e.target.value)}
-                  placeholder="e.g. ชิ้น, กก., ขวด"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white"
+                >
+                  <option value="ชิ้น">ชิ้น</option>
+                  <option value="แพ็ค">แพ็ค</option>
+                  <option value="ขวด">ขวด</option>
+                  <option value="กล่อง">กล่อง</option>
+                  <option value="ถุง">ถุง</option>
+                  <option value="กก.">กก.</option>
+                  <option value="กรัม">กรัม</option>
+                  <option value="ลิตร">ลิตร</option>
+                  <option value="เซต">เซต</option>
+                  <option value="__custom__">อื่นๆ…</option>
+                </select>
+                {unit === '__custom__' && (
+                  <input
+                    value={customUnit}
+                    onChange={(e) => setCustomUnit(e.target.value)}
+                    placeholder="ระบุหน่วยนับ"
+                    className="mt-2 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
+                )}
               </div>
 
               {/* Price */}
@@ -300,6 +377,84 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
                 />
               </div>
 
+              {/* Min stock */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Min stock แจ้งเตือน</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={minStock}
+                  onChange={(e) => setMinStock(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                />
+              </div>
+
+              {/* Pack / Wholesale */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">ราคายกแพ็ค (Pack Price)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={wholesalePrice}
+                    onChange={(e) => setWholesalePrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">หน่วยส่ง (wholesale unit)</label>
+                  <input
+                    value={wholesaleUnit}
+                    onChange={(e) => setWholesaleUnit(e.target.value)}
+                    placeholder="เช่น เซต"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">อัตราแปลงยกแพ็ค</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={conversionFactor}
+                    onChange={(e) => setConversionFactor(e.target.value)}
+                    placeholder="1"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Promo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">โปรฯ ซื้อ (ชิ้น)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={promoQty}
+                    onChange={(e) => setPromoQty(e.target.value)}
+                    placeholder="เช่น 3"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">ราคาโปรฯ รวม ฿</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={promoPrice}
+                    onChange={(e) => setPromoPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                </div>
+              </div>
+
               {/* Expiry Date */}
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Expiry date (วันหมดอายุ)</label>
@@ -312,9 +467,31 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
               {/* Location */}
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Location (ตำแหน่งจัดเก็บ)</label>
-                <input value={locationCode} onChange={e => setLocationCode(e.target.value)}
-                  placeholder="e.g. A1, B2-3"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono" />
+                <select
+                  value={locationCode}
+                  onChange={(e) => setLocationCode(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white font-mono"
+                >
+                  {/* Default */}
+                  <option value="FRONT">front</option>
+                  {/* Server locations */}
+                  {locations
+                    .filter((l) => l.fullCode && l.fullCode.toUpperCase() !== 'FRONT')
+                    .map((l) => (
+                      <option key={l.id} value={l.fullCode}>
+                        {l.fullCode}
+                      </option>
+                    ))}
+                  <option value="__custom__">อื่นๆ…</option>
+                </select>
+                {locationCode === '__custom__' && (
+                  <input
+                    value={customLocation}
+                    onChange={(e) => setCustomLocation(e.target.value)}
+                    placeholder="ระบุ location (เช่น A1, B2-3)"
+                    className="mt-2 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                )}
               </div>
 
               <div className="flex gap-2 pt-1">

@@ -34,7 +34,7 @@ export function ReceiptPrint({
             "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
           fontSize: "12px",
           lineHeight: 1.35,
-          whiteSpace: "pre-wrap",
+          whiteSpace: "pre",
         }}
       >
         {text}
