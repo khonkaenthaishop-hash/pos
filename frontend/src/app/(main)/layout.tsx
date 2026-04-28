@@ -10,44 +10,47 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LANG_LABEL } from '@/i18n/translations';
+import { useLanguage } from '@/i18n/LanguageProvider';
 
 const NAV: Array<{
   href: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   roles?: string[];
 }> = [
-  { href: '/dashboard',           label: 'แดชบอร์ด',        icon: LayoutDashboard },
-  { href: '/pos',                 label: 'POS ขายหน้าร้าน',  icon: ShoppingCart },
-  { href: '/sales-history',       label: 'ประวัติการขาย',     icon: History },
-  { href: '/online-orders',       label: 'ออเดอร์ออนไลน์',   icon: Package },
-  { href: '/products',            label: 'จัดการสินค้า',      icon: Tag },
-  { href: '/categories',          label: 'หมวดหมู่',          icon: Layers,       roles: ['owner', 'manager'] },
-  { href: '/stock',               label: 'คลังสินค้า',        icon: Warehouse },
-  { href: '/inventory/receive',   label: 'รับสินค้าเข้า',     icon: PackagePlus,  roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/adjust',    label: 'นับสต็อก/ปรับยอด',  icon: ClipboardList, roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/discard',   label: 'เคลียร์สินค้า',     icon: Trash2,       roles: ['owner', 'manager'] },
-  { href: '/shipments',           label: 'จัดส่ง',            icon: Truck,        roles: ['owner', 'manager', 'admin'] },
-  { href: '/customers',           label: 'ลูกค้า',            icon: Users,        roles: ['owner', 'manager', 'admin'] },
-  { href: '/users',               label: 'ผู้ใช้งาน',         icon: Users,        roles: ['owner', 'manager'] },
-  { href: '/audit',               label: 'Audit Log',         icon: Shield },
-  { href: '/reports',             label: 'รายงาน',            icon: BarChart2 },
-  { href: '/settings',            label: 'ตั้งค่า',            icon: Settings,     roles: ['owner', 'manager'] },
+  { href: '/dashboard',           labelKey: 'nav.dashboard',     icon: LayoutDashboard },
+  { href: '/pos',                 labelKey: 'nav.pos',           icon: ShoppingCart },
+  { href: '/sales-history',       labelKey: 'nav.salesHistory',  icon: History },
+  { href: '/online-orders',       labelKey: 'nav.onlineOrders',  icon: Package },
+  { href: '/products',            labelKey: 'nav.products',      icon: Tag },
+  { href: '/categories',          labelKey: 'nav.categories',    icon: Layers,        roles: ['owner', 'manager'] },
+  { href: '/stock',               labelKey: 'nav.stock',         icon: Warehouse },
+  { href: '/inventory/receive',   labelKey: 'nav.receive',       icon: PackagePlus,   roles: ['owner', 'manager', 'staff'] },
+  { href: '/inventory/adjust',    labelKey: 'nav.adjust',        icon: ClipboardList, roles: ['owner', 'manager', 'staff'] },
+  { href: '/inventory/discard',   labelKey: 'nav.discard',       icon: Trash2,        roles: ['owner', 'manager'] },
+  { href: '/shipments',           labelKey: 'nav.shipments',     icon: Truck,         roles: ['owner', 'manager', 'admin'] },
+  { href: '/customers',           labelKey: 'nav.customers',     icon: Users,         roles: ['owner', 'manager', 'admin'] },
+  { href: '/users',               labelKey: 'nav.users',         icon: Users,         roles: ['owner', 'manager'] },
+  { href: '/audit',               labelKey: 'nav.audit',         icon: Shield },
+  { href: '/reports',             labelKey: 'nav.reports',       icon: BarChart2 },
+  { href: '/settings',            labelKey: 'nav.settings',      icon: Settings,      roles: ['owner', 'manager'] },
 ];
 
 // Bottom nav — mobile only
 const BOTTOM_NAV = [
-  { href: '/dashboard', label: 'หน้าหลัก', icon: LayoutDashboard },
-  { href: '/pos',       label: 'POS',       icon: ShoppingCart },
-  { href: '/products',  label: 'สินค้า',    icon: Tag },
-  { href: '/stock',     label: 'คลัง',      icon: Warehouse },
-  { href: '/settings',  label: 'ตั้งค่า',   icon: Settings },
+  { href: '/dashboard', labelKey: 'bottom.home',     icon: LayoutDashboard },
+  { href: '/pos',       labelKey: 'bottom.pos',      icon: ShoppingCart },
+  { href: '/products',  labelKey: 'bottom.products', icon: Tag },
+  { href: '/stock',     labelKey: 'bottom.stock',    icon: Warehouse },
+  { href: '/settings',  labelKey: 'bottom.settings', icon: Settings },
 ];
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { lang, toggleLang, t } = useLanguage();
 
   // mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -124,8 +127,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
         {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {filteredNav.map(({ href, label, icon: Icon }) => {
+          {filteredNav.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
+            const label = t(labelKey);
             return (
               <Link
                 key={href}
@@ -163,13 +167,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               </div>
             )}
             {!collapsed && (
-              <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                className="text-slate-500 hover:text-red-400 transition-colors"
-                title="ออกจากระบบ"
-              >
-                <LogOut size={15} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleLang}
+                  className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold"
+                  title={t('common.language')}
+                >
+                  {LANG_LABEL[lang]}
+                </button>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="text-slate-500 hover:text-red-400 transition-colors"
+                  title={t('common.logout')}
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -186,6 +199,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <Menu size={22} />
           </button>
           <div className="text-orange-500 font-extrabold text-base">ร้านขอนแก่น POS</div>
+          <button
+            onClick={toggleLang}
+            className="ml-auto px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold"
+            title={t('common.language')}
+          >
+            {LANG_LABEL[lang]}
+          </button>
         </header>
 
         <main className="flex-1 overflow-hidden pb-16 lg:pb-0">{children}</main>
@@ -195,7 +215,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {BOTTOM_NAV.filter(i => {
             if (i.href === '/settings' && role && !['owner', 'manager'].includes(role)) return false;
             return true;
-          }).map(({ href, label, icon: Icon }) => {
+          }).map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link
@@ -207,7 +227,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 )}
               >
                 <Icon size={20} />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}

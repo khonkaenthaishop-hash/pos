@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, Banknote, QrCode, CreditCard, Receipt, CheckCircle, Loader2 } from 'lucide-react';
 import SlipUpload from '@/components/pos/SlipUpload';
 import CustomerDropdown, { Customer } from '@/components/pos/CustomerDropdown';
+import { useLanguage } from '@/i18n/LanguageProvider';
 
 type PaymentMethodType = 'cash' | 'qr' | 'transfer' | 'cod';
 
@@ -48,16 +49,6 @@ function money(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 
-function paymentMethodLabel(pm: PaymentMethodType): string {
-  const map: Record<PaymentMethodType, string> = {
-    cash: 'เงินสด',
-    qr: 'QR',
-    transfer: 'โอน',
-    cod: 'เก็บปลายทาง',
-  };
-  return map[pm] || pm;
-}
-
 export default function CheckoutConfirmModal({
   open,
   onClose,
@@ -87,6 +78,14 @@ export default function CheckoutConfirmModal({
   isSubmitting,
   disabled,
 }: Props) {
+  const { t } = useLanguage();
+  const paymentLabelMap: Record<PaymentMethodType, string> = {
+    cash: t('payment.cash'),
+    qr: 'QR',
+    transfer: t('payment.transfer'),
+    cod: t('payment.cod'),
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
       <Dialog.Portal>
@@ -94,7 +93,7 @@ export default function CheckoutConfirmModal({
         <Dialog.Content className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-[calc(100vw-2rem)] max-w-lg max-h-[85vh] overflow-y-auto">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
             <Dialog.Title className="text-base font-semibold text-gray-900">
-              ยืนยันการชำระเงิน
+              {t('checkout.confirm_title')}
             </Dialog.Title>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
               <X size={18} />
@@ -104,13 +103,13 @@ export default function CheckoutConfirmModal({
           <div className="p-4 space-y-3">
             <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                ลูกค้า
+                {t('checkout.customer')}
               </div>
               <CustomerDropdown value={customer} onChange={onCustomerChange} />
               <textarea
                 value={note}
                 onChange={(e) => onNoteChange(e.target.value)}
-                placeholder="หมายเหตุ"
+                placeholder={t('checkout.note')}
                 rows={2}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none"
               />
@@ -118,17 +117,17 @@ export default function CheckoutConfirmModal({
 
             <div className="border border-gray-200 rounded-2xl p-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">ลูกค้า</span>
+                <span className="text-gray-500">{t('checkout.customer')}</span>
                 <span className="font-semibold text-gray-900">
-                  {customer?.name || 'ทั่วไป'}
+                  {customer?.name || t('checkout.walk_in')}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">รวม</span>
+                <span className="text-gray-500">{t('checkout.subtotal')}</span>
                 <span className="tabular-nums">{money(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">ส่วนลดท้ายบิล</span>
+                <span className="text-gray-500">{t('checkout.bill_discount')}</span>
                 <span className="tabular-nums">{money(discount)}</span>
               </div>
               <label className="flex items-center justify-between gap-2 cursor-pointer">
@@ -139,20 +138,20 @@ export default function CheckoutConfirmModal({
                     onChange={(e) => onIncludeVatChange(e.target.checked)}
                     className="rounded"
                   />
-                  ภาษีมูลค่าเพิ่ม 7%
+                  {t('checkout.vat_label')}
                 </span>
                 <span className="tabular-nums text-gray-500">
                   {includeVat ? money(vatAmount) : '—'}
                 </span>
               </label>
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between font-bold">
-                <span>ยอดสุทธิ</span>
+                <span>{t('checkout.net_total')}</span>
                 <span className="text-orange-600 text-base tabular-nums">{money(netTotal)}</span>
               </div>
             </div>
 
             <div className="border border-gray-200 rounded-2xl p-3 space-y-3">
-              <div className="text-sm font-semibold text-gray-900">ประเภทการชำระ</div>
+              <div className="text-sm font-semibold text-gray-900">{t('checkout.payment_type')}</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['cash', 'qr', 'transfer', 'cod'] as PaymentMethodType[]).map((pm) => (
                   <button
@@ -168,7 +167,7 @@ export default function CheckoutConfirmModal({
                     {pm === 'qr' && <QrCode size={14} />}
                     {pm === 'transfer' && <CreditCard size={14} />}
                     {pm === 'cod' && <Receipt size={14} />}
-                    {paymentMethodLabel(pm)}
+                    {paymentLabelMap[pm]}
                   </button>
                 ))}
               </div>
@@ -189,11 +188,11 @@ export default function CheckoutConfirmModal({
                       onClick={() => onCashReceivedChange(money(netTotal))}
                       className="px-2.5 py-1.5 border border-orange-200 rounded-xl text-xs bg-orange-50 text-orange-600 font-medium"
                     >
-                      พอดี
+                      {t('checkout.exact')}
                     </button>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">รับเงินมา</span>
+                    <span className="text-gray-600">{t('checkout.cash_received')}</span>
                     <input
                       value={cashReceived}
                       onChange={(e) => {
@@ -207,7 +206,7 @@ export default function CheckoutConfirmModal({
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">เงินทอน</span>
+                    <span className="text-gray-600">{t('checkout.change')}</span>
                     <span className={`font-bold tabular-nums ${change > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
                       {money(change)}
                     </span>
@@ -228,13 +227,13 @@ export default function CheckoutConfirmModal({
                   className="rounded"
                 />
                 <label htmlFor="isDebt_modal" className="text-sm text-gray-600 cursor-pointer">
-                  บิลเชื่อ (ลูกค้าจ่ายภายหลัง)
+                  {t('checkout.debt')}
                 </label>
               </div>
               {isDebt && (
                 <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
                   <div className="text-xs font-semibold text-amber-700">
-                    ต้องระบุวันครบกำหนด
+                    {t('checkout.due_required')}
                   </div>
                   <input
                     type="date"
@@ -255,7 +254,7 @@ export default function CheckoutConfirmModal({
               className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white font-extrabold rounded-2xl text-sm transition"
             >
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              ชำระเงิน
+              {t('checkout.pay')}
             </button>
           </div>
         </Dialog.Content>

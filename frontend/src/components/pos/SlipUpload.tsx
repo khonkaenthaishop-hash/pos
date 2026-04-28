@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageProvider';
 
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || '';
 
@@ -21,7 +22,7 @@ async function uploadSlip(file: File): Promise<string> {
     body: JSON.stringify({ name: `slip_${Date.now()}.jpg`, mimeType: file.type, data: base64 }),
   });
   const json = await response.json();
-  if (!json.url) throw new Error(json.error || 'อัปโหลดสลิปไม่สำเร็จ');
+  if (!json.url) throw new Error(json.error || 'slip.upload_failed');
   return json.url;
 }
 
@@ -32,20 +33,22 @@ interface Props {
 }
 
 export default function SlipUpload({ value, onChange, required }: Props) {
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
 
   const handleFile = async (file: File) => {
     setError('');
-    if (!file.type.startsWith('image/')) { setError('รองรับเฉพาะรูปภาพ'); return; }
-    if (file.size > 5 * 1024 * 1024) { setError('ไฟล์ใหญ่เกิน 5MB'); return; }
+    if (!file.type.startsWith('image/')) { setError(t('slip.image_only')); return; }
+    if (file.size > 5 * 1024 * 1024) { setError(t('slip.too_large')); return; }
     setIsUploading(true);
     try {
       const url = await uploadSlip(file);
       onChange(url);
     } catch (e: unknown) {
-      setError((e as Error).message || 'อัปโหลดล้มเหลว');
+      const raw = (e as Error).message || '';
+      setError(raw.startsWith('slip.') ? t(raw) : (raw || t('slip.upload_failed')));
     } finally {
       setIsUploading(false);
     }
@@ -70,7 +73,7 @@ export default function SlipUpload({ value, onChange, required }: Props) {
           <div className="space-y-1">
             <ImageIcon size={24} className="mx-auto text-gray-300" />
             <p className="text-xs text-gray-500">
-              {required ? <span className="text-red-500 font-semibold">* ต้องแนบสลิป</span> : 'แนบสลิปการโอน'}
+              {required ? <span className="text-red-500 font-semibold">* {t('slip.required')}</span> : t('slip.attach')}
             </p>
           </div>
         )}
@@ -82,7 +85,7 @@ export default function SlipUpload({ value, onChange, required }: Props) {
         className="w-full flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
       >
         {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-        {isUploading ? 'กำลังอัปโหลด...' : (value ? 'เปลี่ยนสลิป' : 'อัปโหลดสลิป')}
+        {isUploading ? t('slip.uploading') : (value ? t('slip.change') : t('slip.upload'))}
       </button>
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
