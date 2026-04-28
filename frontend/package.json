@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
+    "print-proxy": "node ../scripts/print-proxy.js",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

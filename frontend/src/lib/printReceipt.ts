@@ -66,15 +66,6 @@ function concat(...parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
-function toBase64(u8: Uint8Array): string {
-  // Browser-safe base64 for binary data without stack overflow
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < u8.length; i += chunk) {
-    binary += String.fromCharCode(...u8.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
 
 function buildQr(content: string, size = 6): Uint8Array {
   const data    = new TextEncoder().encode(content);
@@ -144,47 +135,6 @@ export async function printReceipt(
     ((receipt as unknown as { renderMode?: unknown }).renderMode !== 'text' &&
       shouldUseImageMode(receipt));
 
-  if (printer?.host) {
-    const body =
-      preferImage
-        ? (() => {
-            const payload = buildImageReceiptPayload(receipt, {
-              paperWidthMm: (receipt as unknown as { paperWidthMm?: number }).paperWidthMm as
-                | 55
-                | 72
-                | undefined,
-              codePage: receipt.codePage,
-            });
-            return { payloadBase64: toBase64(payload), printer };
-          })()
-        : { receipt, printer };
-
-    const res = await fetch('/api/print', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const json: unknown = await res.json().catch(() => null);
-    if (!res.ok) {
-      const errorMessage =
-        typeof json === 'object' && json !== null && 'error' in json
-          ? String((json as { error?: unknown }).error)
-          : `Print API error: ${res.status}`;
-      throw new Error(errorMessage);
-    }
-
-    if (!(typeof json === 'object' && json !== null && (json as { success?: unknown }).success === true)) {
-      const errorMessage =
-        typeof json === 'object' && json !== null && 'error' in json
-          ? String((json as { error?: unknown }).error)
-          : 'Print failed';
-      throw new Error(errorMessage);
-    }
-
-    return;
-  }
-
   const payload = preferImage
     ? buildImageReceiptPayload(receipt, {
         paperWidthMm: (receipt as unknown as { paperWidthMm?: number }).paperWidthMm as
@@ -194,9 +144,10 @@ export async function printReceipt(
         codePage: receipt.codePage,
       })
     : await buildEscPos(receipt);
-  // Normalize to an ArrayBuffer-backed view (avoids SharedArrayBuffer typing issues)
-  const payloadCopy = new Uint8Array(payload);
 
+  // Always send via RawBT on localhost — Vercel cannot reach LAN printers
+  void printer; // printer config kept for future use (e.g. local proxy)
+  const payloadCopy = new Uint8Array(payload);
   const body = new Blob([payloadCopy.buffer], { type: 'application/octet-stream' });
 
   const res = await fetch('http://localhost:8080/rawbt', {
