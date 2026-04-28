@@ -12,12 +12,12 @@
 export const WIDTH = 32;
 
 // Column widths — must sum to WIDTH exactly
-// name(14) + qty(4) + price(7) + total(7) = 32
-// NOTE: price/total need 7 chars to support values like 9999.99
-const COL_NAME = 14;
-const COL_QTY = 4;
-const COL_PRICE = 7;
-const COL_TOTAL = 7;
+// name(15) + qty(5) + price(12) = 32
+// NOTE: show only Name/Qty/Price (no per-item total column)
+const COL_NAME = 15;
+const COL_QTY = 5;
+const COL_PRICE = 12;
+const COL_VALUE = COL_PRICE;
 
 
 // ─── Unicode-safe primitives ───────────────────────────────────
@@ -28,30 +28,84 @@ function uLen(s: string): number {
 }
 
 /** ตัด string ที่ n codepoints */
-function uSlice(s: string, start: number, end?: number): string {
-  return [...s].slice(start, end).join('');
+/** Thai combining marks / zero-width marks that should not affect column width */
+function isZeroWidthMark(ch: string): boolean {
+  const cp = ch.codePointAt(0) ?? 0;
+  // Thai marks: MAI HAN-AKAT, SARA I.., MAITAIKHU.., etc.
+  if (cp === 0x0e31) return true;
+  if (cp >= 0x0e34 && cp <= 0x0e3a) return true;
+  if (cp >= 0x0e47 && cp <= 0x0e4e) return true;
+  return false;
+}
+
+/** ความกว้างเพื่อจัดคอลัมน์ (นับเฉพาะตัวที่กินช่อง) */
+function uWidth(s: string): number {
+  let w = 0;
+  for (const ch of [...s]) {
+    if (isZeroWidthMark(ch)) continue;
+    w += 1;
+  }
+  return w;
+}
+
+/**
+ * ตัดข้อความตามความกว้างคอลัมน์ (Thai-safe)
+ * - นับความกว้างโดยไม่นับ combining marks
+ * - ถ้าตัดกลางตัวอักษร + วรรณยุกต์ จะดึง marks ที่ตามมามาด้วย
+ */
+function truncateByWidth(text: string, maxWidth: number): string {
+  const chars = [...text];
+  const out: string[] = [];
+  let w = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i]!;
+    const chW = isZeroWidthMark(ch) ? 0 : 1;
+    if (w + chW > maxWidth) break;
+    out.push(ch);
+    w += chW;
+  }
+  // include trailing combining marks right after last base char
+  let j = out.length;
+  while (j < chars.length && isZeroWidthMark(chars[j]!)) {
+    out.push(chars[j]!);
+    j++;
+  }
+  return out.join('');
 }
 
 // ─── Layout helpers ────────────────────────────────────────────
 
 /** จัดชิดซ้าย — ผล: string ที่มีความยาว = width เสมอ */
 export function padRight(text: string, width: number): string {
-  const len = uLen(text);
-  if (len >= width) return uSlice(text, 0, width);
+  const len = uWidth(text);
+  if (len >= width) return truncateByWidth(text, width);
   return text + ' '.repeat(width - len);
 }
 
 /** จัดชิดขวา — ผล: string ที่มีความยาว = width เสมอ */
 export function padLeft(text: string, width: number): string {
-  const len = uLen(text);
-  if (len >= width) return uSlice(text, len - width, len);
+  const len = uWidth(text);
+  if (len >= width) {
+    // take the right-most part by width
+    const chars = [...text];
+    let w = 0;
+    let start = chars.length;
+    for (let i = chars.length - 1; i >= 0; i--) {
+      const ch = chars[i]!;
+      const chW = isZeroWidthMark(ch) ? 0 : 1;
+      if (w + chW > width) break;
+      start = i;
+      w += chW;
+    }
+    return chars.slice(start).join('');
+  }
   return ' '.repeat(width - len) + text;
 }
 
 /** จัดกึ่งกลาง — ผล: string ที่มีความยาว = width เสมอ */
 export function center(text: string, width: number): string {
-  const len = uLen(text);
-  if (len >= width) return uSlice(text, 0, width);
+  const len = uWidth(text);
+  if (len >= width) return truncateByWidth(text, width);
   const pad   = width - len;
   const left  = Math.floor(pad / 2);
   const right = pad - left;
@@ -195,43 +249,27 @@ function buildHeader(data: ReceiptData): string[] {
 }
 
 function buildTableHeader(): string {
-  // ผลรวม: COL_NAME + COL_QTY + COL_PRICE + COL_TOTAL = WIDTH
+  // ผลรวม: COL_NAME + COL_QTY + COL_PRICE = WIDTH
   return (
     padRight('Name',  COL_NAME)  +
     padLeft('Qty',    COL_QTY)   +
-    padLeft('Price',  COL_PRICE) +
-    padLeft('Total',  COL_TOTAL)
+    padLeft('Price',  COL_PRICE)
   );
 }
 
 function buildItemLines(item: ReceiptItem): string[] {
-  const lines: string[] = [];
-  const itemTotal = item.qty * item.price;
-  const nameLines = wrapText(item.name, COL_NAME);
-
-  // บรรทัดแรก: name + qty + price + total (รวม = WIDTH)
-  lines.push(
-    padRight(nameLines[0], COL_NAME)  +
-    padLeft(String(item.qty),   COL_QTY)   +
-    padLeft(money(item.price),  COL_PRICE) +
-    padLeft(money(itemTotal),   COL_TOTAL),
-  );
-
-  // บรรทัด wrap: name column + padding ให้ครบ WIDTH
-  for (let i = 1; i < nameLines.length; i++) {
-    lines.push(
-      padRight(nameLines[i], COL_NAME) +
-      ' '.repeat(COL_QTY + COL_PRICE + COL_TOTAL),
-    );
-  }
-
-  return lines;
+  const name = truncateByWidth(String(item.name ?? ''), COL_NAME);
+  return [
+    padRight(name, COL_NAME) +
+      padLeft(String(item.qty), COL_QTY) +
+      padLeft(money(item.price), COL_PRICE),
+  ];
 }
 
 function buildSummary(data: ReceiptData): string[] {
-  const LABEL_W = WIDTH - COL_TOTAL;
+  const LABEL_W = WIDTH - COL_VALUE;
   const row = (label: string, value: string): string =>
-    padRight(label, LABEL_W) + padLeft(value, COL_TOTAL);
+    padRight(label, LABEL_W) + padLeft(value, COL_VALUE);
 
   const subtotal = typeof data.subtotal === 'number'
     ? data.subtotal

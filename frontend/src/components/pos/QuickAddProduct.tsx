@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Camera, X, Loader2, Check, ScanBarcode, RefreshCw } from 'lucide-react';
+import { Camera, X, Loader2, Check, ScanBarcode, RefreshCw, Scan } from 'lucide-react';
 import { productsApi, categoriesApi, locationsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import BarcodeScanner from './BarcodeScanner';
 
 type Props = {
   onClose: () => void;
@@ -72,8 +73,23 @@ function generateSku(): string {
   return `SKU-${now}-${rand}`;
 }
 
+/** สร้าง EAN-13 ที่ valid — 12 หลักสุ่ม + check digit คำนวณถูกต้อง */
+function generateEAN13(): string {
+  // สุ่ม 12 หลัก (prefix 200-299 = in-house range ไม่ซ้ำกับ GS1 จริง)
+  const prefix = String(Math.floor(Math.random() * 100) + 200); // 200–299
+  const body = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join('');
+  const digits = (prefix + body).split('').map(Number);
+  // EAN-13 check digit: odd pos × 1, even pos × 3
+  const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0);
+  const check = (10 - (sum % 10)) % 10;
+  return digits.join('') + check;
+}
+
 export default function QuickAddProduct({ onClose, onSaved }: Props) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const [isScanningBarcode, setIsScanningBarcode] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
 
   const [imageFile, setImageFile]       = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
@@ -305,8 +321,61 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
               {/* Barcode */}
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Barcode</label>
-                <input value={barcode} onChange={e => setBarcode(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono" />
+                <div className="flex gap-2">
+                  <input
+                    value={barcode}
+                    onChange={e => setBarcode(e.target.value)}
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBarcode(generateEAN13())}
+                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs text-gray-600 whitespace-nowrap"
+                  >
+                    Gen EAN-13
+                  </button>
+                  <button
+                    type="button"
+                    title="เปิดกล้องสแกนบาร์โค้ด"
+                    onClick={() => setShowCameraScanner(true)}
+                    className="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-orange-600"
+                  >
+                    <Scan size={15} />
+                  </button>
+                </div>
+                {/* barcode scanner input — hidden text field รอรับค่าจากเครื่องสแกน */}
+                {isScanningBarcode && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="ชี้เครื่องสแกนที่บาร์โค้ด..."
+                      className="flex-1 border-2 border-orange-400 rounded-xl px-3 py-2 text-sm outline-none font-mono animate-pulse"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const val = (e.currentTarget.value).trim();
+                          if (val) setBarcode(val);
+                          setIsScanningBarcode(false);
+                        }
+                        if (e.key === 'Escape') setIsScanningBarcode(false);
+                      }}
+                      onBlur={e => {
+                        const val = e.currentTarget.value.trim();
+                        if (val) setBarcode(val);
+                        setIsScanningBarcode(false);
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsScanningBarcode(false)}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* SKU */}
@@ -510,6 +579,18 @@ export default function QuickAddProduct({ onClose, onSaved }: Props) {
           )}
         </div>
       </div>
+
+      {/* Camera barcode scanner */}
+      {showCameraScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            setBarcode(code);
+            setShowCameraScanner(false);
+            toast.success(`สแกนได้: ${code}`);
+          }}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
     </div>
   );
 }

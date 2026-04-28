@@ -29,36 +29,6 @@ function receiptLikelyNeedsImage(r: ReceiptData): boolean {
   return texts.some((t) => hasThai(String(t ?? "")));
 }
 
-function wrapByWidth(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const chars = [...text];
-  const lines: string[] = [];
-  let start = 0;
-  while (start < chars.length) {
-    let end = chars.length;
-    let low = start + 1;
-    let high = chars.length;
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      const s = chars.slice(start, mid).join("");
-      const w = ctx.measureText(s).width;
-      if (w <= maxWidth) {
-        end = mid;
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-    if (end <= start) end = Math.min(start + 1, chars.length);
-    lines.push(chars.slice(start, end).join(""));
-    start = end;
-  }
-  return lines.length ? lines : [""];
-}
-
 function canvasToEscPosRaster(canvas: HTMLCanvasElement): Uint8Array {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas 2D context not available");
@@ -140,10 +110,10 @@ export function buildImageReceiptPayload(
   lines.push({ kind: "text", text: sep, align: "left" });
 
   // Table columns (pixels)
-  const colQty = Math.round(maxW * 0.12);
-  const colPrice = Math.round(maxW * 0.22);
-  const colTotal = Math.round(maxW * 0.22);
-  const colName = maxW - colQty - colPrice - colTotal;
+  // Show only Name / Qty / Price (no per-item total column)
+  const colQty = Math.round(maxW * 0.15);
+  const colPrice = Math.round(maxW * 0.30);
+  const colName = maxW - colQty - colPrice;
 
   // Pre-calc subtotal/vat
   const subtotal = receipt.items.reduce((s, i) => s + i.qty * i.price, 0);
@@ -187,26 +157,19 @@ export function buildImageReceiptPayload(
   ctx2.textAlign = "right";
   ctx2.fillText("Qty", padX + colName + colQty, headerY);
   ctx2.fillText("Price", padX + colName + colQty + colPrice, headerY);
-  ctx2.fillText("Total", padX + colName + colQty + colPrice + colTotal, headerY);
   y += lineHeight;
   drawTextLine("-".repeat(paperWidthMm === 58 ? 32 : 42), "left");
 
   // Items
   for (const it of receipt.items) {
-    const nameLines = wrapByWidth(ctx2, it.name, colName);
+    const name = [...String(it.name ?? "")].slice(0, 15).join("");
     const firstY = y;
     ctx2.textAlign = "left";
-    ctx2.fillText(nameLines[0] ?? "", padX, firstY);
+    ctx2.fillText(name, padX, firstY);
     ctx2.textAlign = "right";
     ctx2.fillText(String(it.qty), padX + colName + colQty, firstY);
     ctx2.fillText(money(it.price), padX + colName + colQty + colPrice, firstY);
-    ctx2.fillText(money(it.qty * it.price), padX + colName + colQty + colPrice + colTotal, firstY);
     y += lineHeight;
-    for (let i = 1; i < nameLines.length; i++) {
-      ctx2.textAlign = "left";
-      ctx2.fillText(nameLines[i] ?? "", padX, y);
-      y += lineHeight;
-    }
   }
 
   drawTextLine(sep, "left");

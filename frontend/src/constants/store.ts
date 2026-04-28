@@ -4,9 +4,10 @@ export const STORE_INFO = {
   address: "",
   phone: "098-9224901",
   footerLines: [
-    "Thank you for your purchase!",
-    "Online orders available - COD service",
-    "Facebook: Khonkaen Thai Shop Taiwan",
+    "ขอบคุณจากใจร้านขอนแก่น",
+    "สั่งของออนไลน์ มีปลายทางทั่วประเทศ",
+    "แสกนสั่งของได้ที่",
   ],
-  qrImageUrl: "/khonkaen-pos/frontend/public/facebook-qr.png",
+  qrImageUrl:
+    "https://res.cloudinary.com/duoipdjbk/image/upload/v1777398565/khonkaen-pos/products/SKU-MOIX7BET-QLT.png",
 } as const;

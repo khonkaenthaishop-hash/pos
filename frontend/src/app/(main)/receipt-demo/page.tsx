@@ -52,8 +52,7 @@ export default function ReceiptDemoPage() {
       </div>
 
       <div className="text-xs text-gray-500">
-        หมายเหตุ: ต้องมีไฟล์ QR ที่{" "}
-        <code className="font-mono">frontend/public/facebook-qr.png</code>
+        หมายเหตุ: QR ภาพถูกกำหนดจาก <code className="font-mono">STORE_INFO.qrImageUrl</code>
       </div>
     </div>
   );

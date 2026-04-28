@@ -7,23 +7,21 @@ import { getProductScanMeta } from "@/lib/utils";
 import {
   Banknote,
   CheckCircle,
-  CreditCard,
   Loader2,
   Plus,
-  QrCode,
   Receipt,
   Search,
   Tag,
   Trash2,
   X,
   Minus,
-  User,
   PauseCircle,
   PlayCircle,
   AlertTriangle,
   RotateCcw,
   BarChart2,
   Lock,
+  ShoppingCart,
 } from "lucide-react";
 
 import {
@@ -42,8 +40,8 @@ import { buildReceipt as buildThermalReceipt } from "@/lib/escpos/receiptFormatt
 import { resolveAssetUrl } from "@/lib/resolveAssetUrl";
 import { useSettings } from "@/hooks/useSettings";
 import { ReceiptPrint } from "@/components/ReceiptPrint";
-import CustomerDropdown, { Customer } from "@/components/pos/CustomerDropdown";
-import SlipUpload from "@/components/pos/SlipUpload";
+import type { Customer } from "@/components/pos/CustomerDropdown";
+import CheckoutConfirmModal from "@/components/pos/CheckoutConfirmModal";
 
 // ─── Types ─────────────────────────────────────────────────────
 type Category = { id: string; nameTh: string; icon?: string | null };
@@ -276,6 +274,7 @@ export default function PosPage() {
   const [dueDate, setDueDate] = useState("");
   const [slipUrl, setSlipUrl] = useState("");
   const [isCheckout, setIsCheckout] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // ─── Manager password modal ───────────────────────────────────
   const [showPassModal, setShowPassModal] = useState(false);
@@ -321,6 +320,9 @@ export default function PosPage() {
 
     return legacy.length > 0 ? legacy : [...STORE_INFO.footerLines];
   }, [receiptSettings]);
+
+  // ─── Mobile cart panel ────────────────────────────────────────
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   // ─── Return modal ─────────────────────────────────────────────
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -824,10 +826,10 @@ export default function PosPage() {
   };
 
   // ─── Checkout ─────────────────────────────────────────────────
-  const handleCheckout = async () => {
+  const handleCheckout = async (): Promise<boolean> => {
     if (cart.length === 0) {
       toast.error("ตะกร้าว่าง");
-      return;
+      return false;
     }
 
     // Block checkout if session is closed
@@ -836,7 +838,7 @@ export default function PosPage() {
       (cashierSession as CashierSession).status === "closed"
     ) {
       toast.error("ปิดแคชเชียร์แล้ว ไม่สามารถรับชำระเงินได้");
-      return;
+      return false;
     }
 
     // Validate discount does not exceed subtotal
@@ -844,33 +846,34 @@ export default function PosPage() {
       toast.error(
         `ส่วนลด (${money(discount)} ฿) เกินยอดรวม (${money(subtotal)} ฿)`,
       );
-      return;
+      return false;
     }
 
     if (paymentMethod === "cash" && (Number(cashInput) || 0) < netTotal) {
       toast.error("เงินสดไม่พอ");
-      return;
+      return false;
     }
     if ((paymentMethod === "qr" || paymentMethod === "transfer") && !slipUrl) {
       toast.error("ต้องแนบสลิปก่อน");
-      return;
+      return false;
     }
     if (isDebt) {
       if (!customer) {
         toast.error("บิลเชื่อต้องระบุลูกค้า");
-        return;
+        return false;
       }
       if (!dueDate) {
         toast.error("บิลเชื่อต้องระบุวันครบกำหนด");
-        return;
+        return false;
       }
       if ((Number(customer.totalDebt) || 0) + netTotal > MAX_DEBT) {
         toast.error(`ลูกค้ามีหนี้เกินวงเงิน ${MAX_DEBT.toLocaleString()} ฿`);
-        return;
+        return false;
       }
     }
 
     setIsCheckout(true);
+    let ok = false;
     try {
       const res = await ordersApi.createPos({
         items: cart.map((i) => ({
@@ -932,12 +935,14 @@ export default function PosPage() {
       setDueDate("");
       setSearch("");
       searchRef.current?.focus();
+      ok = true;
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e.response?.data?.message || "เกิดข้อผิดพลาด");
     } finally {
       setIsCheckout(false);
     }
+    return ok;
   };
 
   // ─── Return order ─────────────────────────────────────────────
@@ -1556,10 +1561,18 @@ export default function PosPage() {
         </div>
       )}
 
+      {/* Mobile cart overlay */}
+      {showMobileCart && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setShowMobileCart(false)}
+        />
+      )}
+
       {/* Main layout */}
-      <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 p-4">
+      <div className="h-full flex flex-col lg:grid lg:grid-cols-[1fr_380px] gap-4 p-4">
         {/* ── Catalog ─────────────────────────────────────────────── */}
-        <section className="min-w-0 flex flex-col gap-4">
+        <section className="min-w-0 flex flex-col gap-4 min-h-0">
           <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 text-gray-800 shrink-0">
@@ -1632,6 +1645,19 @@ export default function PosPage() {
                   <BarChart2 size={15} />
                 </button>
               )}
+              {/* Mobile cart toggle */}
+              <button
+                onClick={() => setShowMobileCart(true)}
+                title="ตะกร้า"
+                className="lg:hidden w-9 h-9 flex items-center justify-center bg-gray-900 hover:bg-gray-800 rounded-xl text-white relative"
+              >
+                <ShoppingCart size={15} />
+                {cart.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    {cart.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Category pills */}
@@ -1666,7 +1692,7 @@ export default function PosPage() {
           </div>
 
           {/* Products grid */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex-1 min-h-0 overflow-y-auto">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex-1 overflow-y-auto min-h-50">
             {isLoadingProducts ? (
               <div className="h-48 flex items-center justify-center text-gray-400">
                 <Loader2 size={18} className="animate-spin" />
@@ -1679,9 +1705,13 @@ export default function PosPage() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                 {products.map((p) => {
+                  const isOutOfStock =
+                    p.currentStock != null && p.currentStock <= 0;
                   const isLow =
+                    !isOutOfStock &&
                     p.currentStock != null &&
                     p.currentStock <= (p.minStock ?? 0);
+                  if (isOutOfStock) return null;
                   return (
                     <button
                       key={p.id}
@@ -1741,7 +1771,23 @@ export default function PosPage() {
         </section>
 
         {/* ── Cart ────────────────────────────────────────────────── */}
-        <aside className="bg-white border border-gray-200 rounded-2xl flex flex-col min-h-0">
+        <aside className={`
+          bg-white border border-gray-200 flex flex-col
+          lg:rounded-2xl lg:min-h-0 lg:static lg:shadow-none
+          fixed inset-x-0 bottom-0 z-40 rounded-t-2xl shadow-2xl
+          transition-transform duration-300
+          ${showMobileCart ? 'translate-y-0' : 'translate-y-full'}
+          lg:translate-y-0 lg:relative lg:inset-auto
+          max-h-[85vh] lg:max-h-none
+        `}>
+          {/* Mobile cart drag handle */}
+          <div className="lg:hidden flex items-center justify-between px-4 pt-3 pb-1">
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
+            <span className="font-bold text-sm">ตะกร้า</span>
+            <button onClick={() => setShowMobileCart(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100">
+              <X size={14} />
+            </button>
+          </div>
           {/* Bill tabs */}
           <div className="px-3 pt-3 flex items-center gap-1 overflow-x-auto no-scrollbar">
             {bills.map((b) => (
@@ -1782,6 +1828,15 @@ export default function PosPage() {
               {cart.reduce((s, i) => s + i.qty, 0)} ชิ้น / {cart.length} รายการ
             </div>
             <div className="flex items-center gap-1">
+              {receiptOrder && (
+                <button
+                  onClick={() => setIsReceiptOpen(true)}
+                  title="พิมพ์ใบเสร็จซ้ำ"
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 flex items-center gap-1"
+                >
+                  <Receipt size={12} /> พิมพ์
+                </button>
+              )}
               <button
                 onClick={holdCurrentBill}
                 title="พักบิล"
@@ -1803,7 +1858,7 @@ export default function PosPage() {
             </div>
           </div>
 
-          {/* Cart items */}
+          {/* Cart items — scrollable, takes remaining space */}
           <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
             {cart.length === 0 ? (
               <div className="h-32 flex items-center justify-center text-gray-300 text-sm">
@@ -1884,8 +1939,11 @@ export default function PosPage() {
                         min={0}
                         value={item.itemDiscount || ""}
                         onChange={(e) =>
-                          setItemDiscount(item.id, Number(e.target.value))
+                          setItemDiscount(item.id, Math.max(0, Number(e.target.value)))
                         }
+                        onBlur={(e) => {
+                          if (Number(e.target.value) < 0) setItemDiscount(item.id, 0);
+                        }}
                         placeholder="0"
                         className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-orange-400"
                       />
@@ -1907,51 +1965,10 @@ export default function PosPage() {
               ))
             )}
 
-            {/* Customer + note */}
-            <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                <User size={11} /> ลูกค้า
-              </div>
-              <CustomerDropdown
-                value={customer}
-                onChange={(c) =>
-                  updateActiveBill((b) => ({ ...b, customer: c }))
-                }
-              />
-              {customer && (
-                <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5 space-y-0.5">
-                  {customer.loyaltyPoints != null && (
-                    <div>
-                      แต้มสะสม:{" "}
-                      <span className="font-semibold text-orange-600">
-                        {customer.loyaltyPoints}
-                      </span>
-                    </div>
-                  )}
-                  {(customer.totalDebt || 0) > 0 && (
-                    <div
-                      className={`font-semibold ${Number(customer.totalDebt) >= MAX_DEBT ? "text-red-600" : "text-amber-600"}`}
-                    >
-                      หนี้คงค้าง: {Number(customer.totalDebt).toLocaleString()}{" "}
-                      ฿
-                    </div>
-                  )}
-                </div>
-              )}
-              <textarea
-                value={note}
-                onChange={(e) =>
-                  updateActiveBill((b) => ({ ...b, note: e.target.value }))
-                }
-                placeholder="หมายเหตุ"
-                rows={2}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none"
-              />
-            </div>
           </div>
 
-          {/* Totals + payment */}
-          <div className="p-3 border-t border-gray-100 space-y-3">
+          {/* Summary + confirm — fixed at bottom, list scrolls independently */}
+          <div className="shrink-0 p-3 border-t border-gray-100 space-y-3">
             {/* Summary */}
             <div className="border border-gray-200 rounded-2xl p-3 space-y-1.5 text-sm">
               <div className="flex justify-between">
@@ -1959,7 +1976,7 @@ export default function PosPage() {
                 <span className="tabular-nums">{money(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">ส่วนลดบิล</span>
+                <span className="text-gray-500">ส่วนลดรวม</span>
                 <input
                   type="number"
                   min={0}
@@ -1967,138 +1984,19 @@ export default function PosPage() {
                   onChange={(e) =>
                     updateActiveBill((b) => ({
                       ...b,
-                      discount: Number(e.target.value),
+                      discount: Math.max(0, Number(e.target.value)),
                     }))
                   }
+                  onBlur={(e) => {
+                    if (Number(e.target.value) < 0)
+                      updateActiveBill((b) => ({ ...b, discount: 0 }));
+                  }}
                   className="w-24 text-right border border-gray-200 rounded-xl px-2 py-1 text-sm outline-none focus:border-orange-400 tabular-nums"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-gray-500 flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includeVat}
-                    onChange={(e) => setIncludeVat(e.target.checked)}
-                    className="rounded"
-                  />
-                  ภาษีมูลค่าเพิ่ม 7%
-                </label>
-                <span className="tabular-nums text-gray-500">
-                  {includeVat ? money(vatAmount) : "—"}
-                </span>
-              </div>
-              <div className="pt-1.5 border-t border-gray-100 flex justify-between font-bold">
-                <span>ยอดสุทธิ</span>
-                <span className="text-orange-600 text-base tabular-nums">
-                  {money(netTotal)}
-                </span>
-              </div>
-              {loyaltyPoints > 0 && customer && (
-                <div className="text-xs text-emerald-600">
-                  +{loyaltyPoints} แต้มสะสม
-                </div>
-              )}
             </div>
 
-            {/* Payment method */}
-            <div className="grid grid-cols-4 gap-1.5">
-              {(["cash", "qr", "transfer", "cod"] as PaymentMethodType[]).map(
-                (pm) => (
-                  <button
-                    key={pm}
-                    onClick={() => setPaymentMethod(pm)}
-                    className={`py-2 rounded-xl border text-xs font-semibold transition flex flex-col items-center gap-0.5 ${paymentMethod === pm ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"}`}
-                  >
-                    {pm === "cash" && <Banknote size={14} />}
-                    {pm === "qr" && <QrCode size={14} />}
-                    {pm === "transfer" && <CreditCard size={14} />}
-                    {pm === "cod" && <Receipt size={14} />}
-                    {paymentMethodLabel(pm)}
-                  </button>
-                ),
-              )}
-            </div>
-
-            {/* Cash input + quick buttons */}
-            {paymentMethod === "cash" && (
-              <div className="border border-gray-200 rounded-2xl p-3 space-y-2">
-                <div className="flex gap-1.5 flex-wrap">
-                  {[50, 100, 500, 1000].map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setCashInput(String(v))}
-                      className="px-2.5 py-1.5 border border-gray-200 rounded-xl text-xs hover:bg-orange-50 hover:border-orange-300 font-medium"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCashInput(money(netTotal))}
-                    className="px-2.5 py-1.5 border border-orange-200 rounded-xl text-xs bg-orange-50 text-orange-600 font-medium"
-                  >
-                    พอดี
-                  </button>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">รับเงิน</span>
-                  <input
-                    value={cashInput}
-                    onChange={(e) => setCashInput(e.target.value)}
-                    type="number"
-                    min={0}
-                    placeholder="0.00"
-                    className="w-28 text-right border border-gray-200 rounded-xl px-2 py-1.5 text-sm outline-none focus:border-orange-400 tabular-nums"
-                  />
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">เงินทอน</span>
-                  <span
-                    className={`font-bold tabular-nums ${change > 0 ? "text-emerald-600" : "text-gray-400"}`}
-                  >
-                    {money(change)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Slip upload for QR/transfer */}
-            {(paymentMethod === "qr" || paymentMethod === "transfer") && (
-              <SlipUpload value={slipUrl} onChange={setSlipUrl} required />
-            )}
-
-            {/* Debt toggle */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isDebt"
-                checked={isDebt}
-                onChange={(e) => setIsDebt(e.target.checked)}
-                className="rounded"
-              />
-              <label
-                htmlFor="isDebt"
-                className="text-sm text-gray-600 cursor-pointer"
-              >
-                บิลเชื่อ (ลูกค้าจ่ายภายหลัง)
-              </label>
-            </div>
-            {isDebt && (
-              <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
-                <div className="text-xs font-semibold text-amber-700 flex items-center gap-1">
-                  <AlertTriangle size={12} /> บิลเชื่อ —
-                  ต้องระบุลูกค้าและวันครบกำหนด
-                </div>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  min={today}
-                  className="w-full border border-amber-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-400 bg-white"
-                />
-              </div>
-            )}
-
-            {/* Checkout button — disabled when session is closed */}
+            {/* Confirm button — opens popup (bottom-most) */}
             {cashierSession &&
             (cashierSession as CashierSession).status === "closed" ? (
               <div className="w-full py-3 bg-gray-200 text-gray-400 font-bold rounded-2xl text-sm text-center">
@@ -2106,31 +2004,60 @@ export default function PosPage() {
               </div>
             ) : (
               <button
-                onClick={handleCheckout}
-                disabled={cart.length === 0 || isCheckout}
+                onClick={() => {
+                  if (cart.length === 0) return toast.error("ตะกร้าว่าง");
+                  setShowConfirmModal(true);
+                }}
+                disabled={cart.length === 0}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white font-extrabold rounded-2xl text-sm transition"
               >
-                {isCheckout ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={16} />
-                )}
-                บันทึก + ชำระเงิน
-              </button>
-            )}
-
-            {/* Reprint */}
-            {receiptOrder && (
-              <button
-                onClick={() => setIsReceiptOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-2xl text-sm"
-              >
-                <Receipt size={14} /> พิมพ์ใบเสร็จซ้ำ
+                <CheckCircle size={16} />
+                ยืนยัน
               </button>
             )}
           </div>
         </aside>
       </div>
+
+      <CheckoutConfirmModal
+        open={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        customer={customer}
+        onCustomerChange={(c) =>
+          updateActiveBill((b) => ({ ...b, customer: c }))
+        }
+        note={note}
+        onNoteChange={(v) => updateActiveBill((b) => ({ ...b, note: v }))}
+        subtotal={subtotal}
+        discount={discount}
+        includeVat={includeVat}
+        onIncludeVatChange={(v) => setIncludeVat(v)}
+        vatAmount={vatAmount}
+        netTotal={netTotal}
+        paymentMethod={paymentMethod}
+        onPaymentMethodChange={(pm) => setPaymentMethod(pm)}
+        cashReceived={cashInput}
+        onCashReceivedChange={(v) => setCashInput(v)}
+        change={change}
+        slipUrl={slipUrl}
+        onSlipUrlChange={(v) => setSlipUrl(v)}
+        isDebt={isDebt}
+        onIsDebtChange={(v) => setIsDebt(v)}
+        dueDate={dueDate}
+        onDueDateChange={(v) => setDueDate(v)}
+        dueDateMin={today}
+        isSubmitting={isCheckout}
+        disabled={
+          cart.length === 0 ||
+          (cashierSession
+            ? (cashierSession as CashierSession).status === "closed"
+            : false)
+        }
+        onConfirmPay={async () => {
+          const ok = await handleCheckout();
+          if (ok) setShowConfirmModal(false);
+        }}
+      />
     </div>
   );
 }

@@ -1,12 +1,12 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import {
   LayoutDashboard, ShoppingCart, Package, Tag,
   Warehouse, BarChart2, Shield, LogOut, Truck, Users, Layers,
-  PackagePlus, ClipboardList, Trash2, Settings,
+  PackagePlus, ClipboardList, Trash2, Settings, Menu, X, ChevronLeft, History,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,109 +17,202 @@ const NAV: Array<{
   icon: LucideIcon;
   roles?: string[];
 }> = [
-  { href: '/dashboard',     label: 'แดชบอร์ด',     icon: LayoutDashboard },
-  { href: '/pos',           label: 'POS ขายหน้าร้าน', icon: ShoppingCart },
-  { href: '/online-orders', label: 'ออเดอร์ออนไลน์', icon: Package },
-  { href: '/products',      label: 'จัดการสินค้า',   icon: Tag },
-  { href: '/categories',    label: 'หมวดหมู่',       icon: Layers, roles: ['owner', 'manager'] },
-  { href: '/stock',              label: 'คลังสินค้า',       icon: Warehouse },
-  { href: '/inventory/receive',  label: 'รับสินค้าเข้า',    icon: PackagePlus,  roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/adjust',   label: 'นับสต็อก/ปรับยอด', icon: ClipboardList, roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/discard',  label: 'เคลียร์สินค้า',    icon: Trash2,        roles: ['owner', 'manager'] },
-  { href: '/shipments',     label: 'จัดส่ง',         icon: Truck, roles: ['owner', 'manager', 'admin'] },
-  { href: '/customers',     label: 'ลูกค้า',         icon: Users, roles: ['owner', 'manager', 'admin'] },
-  { href: '/users',         label: 'ผู้ใช้งาน',      icon: Users, roles: ['owner', 'manager'] },
-  { href: '/audit',         label: 'Audit Log',      icon: Shield },
-  { href: '/reports',       label: 'รายงาน',         icon: BarChart2 },
-  { href: '/settings',      label: 'ตั้งค่า',         icon: Settings, roles: ['owner', 'manager'] },
+  { href: '/dashboard',           label: 'แดชบอร์ด',        icon: LayoutDashboard },
+  { href: '/pos',                 label: 'POS ขายหน้าร้าน',  icon: ShoppingCart },
+  { href: '/sales-history',       label: 'ประวัติการขาย',     icon: History },
+  { href: '/online-orders',       label: 'ออเดอร์ออนไลน์',   icon: Package },
+  { href: '/products',            label: 'จัดการสินค้า',      icon: Tag },
+  { href: '/categories',          label: 'หมวดหมู่',          icon: Layers,       roles: ['owner', 'manager'] },
+  { href: '/stock',               label: 'คลังสินค้า',        icon: Warehouse },
+  { href: '/inventory/receive',   label: 'รับสินค้าเข้า',     icon: PackagePlus,  roles: ['owner', 'manager', 'staff'] },
+  { href: '/inventory/adjust',    label: 'นับสต็อก/ปรับยอด',  icon: ClipboardList, roles: ['owner', 'manager', 'staff'] },
+  { href: '/inventory/discard',   label: 'เคลียร์สินค้า',     icon: Trash2,       roles: ['owner', 'manager'] },
+  { href: '/shipments',           label: 'จัดส่ง',            icon: Truck,        roles: ['owner', 'manager', 'admin'] },
+  { href: '/customers',           label: 'ลูกค้า',            icon: Users,        roles: ['owner', 'manager', 'admin'] },
+  { href: '/users',               label: 'ผู้ใช้งาน',         icon: Users,        roles: ['owner', 'manager'] },
+  { href: '/audit',               label: 'Audit Log',         icon: Shield },
+  { href: '/reports',             label: 'รายงาน',            icon: BarChart2 },
+  { href: '/settings',            label: 'ตั้งค่า',            icon: Settings,     roles: ['owner', 'manager'] },
+];
+
+// Bottom nav — mobile only
+const BOTTOM_NAV = [
+  { href: '/dashboard', label: 'หน้าหลัก', icon: LayoutDashboard },
+  { href: '/pos',       label: 'POS',       icon: ShoppingCart },
+  { href: '/products',  label: 'สินค้า',    icon: Tag },
+  { href: '/stock',     label: 'คลัง',      icon: Warehouse },
+  { href: '/settings',  label: 'ตั้งค่า',   icon: Settings },
 ];
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  // mobile drawer
+  const [mobileOpen, setMobileOpen] = useState(false);
+  // desktop collapsed (icon-only)
+  const [collapsed, setCollapsed] = useState(false);
+
   const accessToken = (session as Record<string, unknown> | null)?.accessToken as string | undefined;
   const user = session?.user;
   const role = (user as Record<string, string> | null | undefined)?.role || '';
   const initials = (user?.name || user?.email || 'U').slice(0, 1).toUpperCase();
 
+  // Close mobile drawer on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
   useEffect(() => {
     if (status === 'loading') return;
-
     if (status === 'unauthenticated') {
       if (typeof window !== 'undefined') localStorage.removeItem('access_token');
       router.replace('/login');
       return;
     }
-
     if (status === 'authenticated') {
-      if (!accessToken) {
-        signOut({ callbackUrl: '/login' });
-        return;
-      }
+      if (!accessToken) { signOut({ callbackUrl: '/login' }); return; }
       if (typeof window !== 'undefined') localStorage.setItem('access_token', accessToken);
     }
   }, [status, accessToken, router]);
 
+  const filteredNav = NAV.filter(i => !i.roles || (role && i.roles.includes(role)));
+
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-56 bg-slate-900 flex flex-col shrink-0">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-slate-800">
-          <div className="text-orange-400 font-extrabold text-lg leading-none">ร้านขอนแก่น</div>
-          <div className="text-slate-400 text-xs mt-0.5">POS System</div>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ──────────────────────────────────────────── */}
+      <aside className={cn(
+        'fixed inset-y-0 left-0 z-40 bg-slate-900 flex flex-col shrink-0 transition-all duration-200',
+        // mobile: drawer behaviour
+        'lg:static',
+        mobileOpen ? 'translate-x-0 w-56' : '-translate-x-full w-56',
+        // desktop: collapsed ↔ expanded
+        'lg:translate-x-0',
+        collapsed ? 'lg:w-14' : 'lg:w-56',
+      )}>
+        {/* Logo / collapse button */}
+        <div className="px-3 py-4 border-b border-slate-800 flex items-center justify-between min-h-15">
+          {!collapsed && (
+            <div className="flex-1 min-w-0 pl-1">
+              <div className="text-orange-400 font-extrabold text-base leading-none truncate">ร้านขอนแก่น</div>
+              <div className="text-slate-400 text-xs mt-0.5">POS System</div>
+            </div>
+          )}
+          {/* Desktop collapse toggle */}
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors shrink-0"
+            title={collapsed ? 'ขยาย sidebar' : 'ย่อ sidebar'}
+          >
+            {collapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
+          </button>
+          {/* Mobile close button */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
-          {NAV.filter(i => !i.roles || (role && i.roles.includes(role))).map(({ href, label, icon: Icon }) => {
+        <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
+          {filteredNav.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link
                 key={href}
                 href={href}
+                title={collapsed ? label : undefined}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center rounded-lg text-sm font-medium transition-colors',
+                  collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
                   active
                     ? 'bg-orange-500 text-white'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white',
                 )}
               >
-                <Icon size={16} />
-                {label}
+                <Icon size={16} className="shrink-0" />
+                {!collapsed && <span className="truncate">{label}</span>}
               </Link>
             );
           })}
         </nav>
 
         {/* User */}
-        <div className="border-t border-slate-800 p-3">
-          <div className="flex items-center gap-2.5 px-2 py-2">
+        <div className="border-t border-slate-800 p-2">
+          <div className={cn('flex items-center gap-2.5 px-1 py-2', collapsed && 'justify-center')}>
             <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {initials}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-xs font-medium truncate">
-                {(user as Record<string, string> | null | undefined)?.nameTh || user?.name || user?.email}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-xs font-medium truncate">
+                  {(user as Record<string, string> | null | undefined)?.nameTh || user?.name || user?.email}
+                </div>
+                <div className="text-slate-500 text-xs capitalize">
+                  {(user as Record<string, string> | null | undefined)?.role || 'user'}
+                </div>
               </div>
-              <div className="text-slate-500 text-xs capitalize">
-                {(user as Record<string, string> | null | undefined)?.role || 'user'}
-              </div>
-            </div>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-slate-500 hover:text-red-400 transition-colors"
-              title="ออกจากระบบ"
-            >
-              <LogOut size={15} />
-            </button>
+            )}
+            {!collapsed && (
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="text-slate-500 hover:text-red-400 transition-colors"
+                title="ออกจากระบบ"
+              >
+                <LogOut size={15} />
+              </button>
+            )}
           </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 overflow-hidden">{children}</main>
+      {/* ── Main content ─────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile top bar */}
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="text-orange-500 font-extrabold text-base">ร้านขอนแก่น POS</div>
+        </header>
+
+        <main className="flex-1 overflow-hidden pb-16 lg:pb-0">{children}</main>
+
+        {/* Bottom nav — mobile only */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 flex">
+          {BOTTOM_NAV.filter(i => {
+            if (i.href === '/settings' && role && !['owner', 'manager'].includes(role)) return false;
+            return true;
+          }).map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + '/');
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors',
+                  active ? 'text-orange-500' : 'text-gray-400 hover:text-gray-700',
+                )}
+              >
+                <Icon size={20} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }
