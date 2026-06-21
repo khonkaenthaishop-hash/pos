@@ -18,7 +18,9 @@ export enum AuditAction {
   USER_CREATE       = 'USER_CREATE',
   USER_DEACTIVATE   = 'USER_DEACTIVATE',
   USER_ACTIVATE     = 'USER_ACTIVATE',
-  ORDER_RETURN      = 'ORDER_RETURN',
+  ORDER_RETURN            = 'ORDER_RETURN',
+  SHIPPING_STATUS_UPDATE  = 'SHIPPING_STATUS_UPDATE', // added by migration 008
+  GMAIL_SYNC              = 'GMAIL_SYNC',              // added by migration 008
 }
 
 @Entity('audit_logs')

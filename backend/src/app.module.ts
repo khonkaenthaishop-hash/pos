@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProductsModule } from './modules/products/products.module';
@@ -15,6 +16,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { CashierSessionsModule } from './modules/cashier-sessions/cashier-sessions.module';
 import { HeldOrdersModule } from './modules/held-orders/held-orders.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { GmailShippingModule } from './modules/gmail-shipping/gmail-shipping.module';
 
 @Module({
   imports: [
@@ -23,6 +25,9 @@ import { SettingsModule } from './modules/settings/settings.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    // Task scheduling (required by GmailShippingModule cron jobs)
+    ScheduleModule.forRoot(),
 
     // Database
     TypeOrmModule.forRootAsync({
@@ -53,6 +58,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     CashierSessionsModule,
     HeldOrdersModule,
     SettingsModule,
+    GmailShippingModule,
   ],
 })
 export class AppModule {}

@@ -25,6 +25,7 @@ export enum OrderStatus {
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
   CLAIMED   = 'claimed',
+  RETURNED  = 'returned', // added by migration 008 — item returned to seller by 7-ELEVEN
 }
 
 export enum PaymentMethod {

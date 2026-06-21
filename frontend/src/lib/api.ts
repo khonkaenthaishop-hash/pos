@@ -260,6 +260,21 @@ export const locationsApi = {
   ) => api.patch(`/products/${productId}/locations`, items),
 };
 
+// ── Gmail Shipping ───────────────────────────────────────────────
+export const gmailShippingApi = {
+  status: () => api.get('/gmail-shipping/status'),
+  authUrl: () => api.get('/gmail-shipping/auth/url'),
+  disconnect: () => api.delete('/gmail-shipping/disconnect'),
+  sync: () => api.post('/gmail-shipping/sync'),
+  dashboard: (date: string) =>
+    api.get('/gmail-shipping/dashboard', { params: { date } }),
+  confirmEmail: (id: string) =>
+    api.patch(`/gmail-shipping/emails/${id}/confirm`),
+  matchEmail: (id: string, orderId: string) =>
+    api.patch(`/gmail-shipping/emails/${id}/match`, { orderId }),
+  unmatched: () => api.get('/gmail-shipping/emails/unmatched'),
+};
+
 // ── Settings ─────────────────────────────────────────────────────
 export const settingsApi = {
   get: (group: string) => api.get(`/settings/${group}`),

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Store, Receipt, Printer, Users, ShieldCheck,
   Package, Warehouse, Tag, Truck, Bell,
-  Bot, Lock, BarChart2, Settings,
+  Bot, Lock, BarChart2, Settings, Mail,
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -38,6 +38,7 @@ const NAV_GROUPS = [
     label: 'การขนส่ง',
     items: [
       { href: '/settings/shipping',       label: 'การขนส่ง',        icon: Truck },
+      { href: '/settings/gmail',          label: 'Gmail',            icon: Mail },
     ],
   },
   {
