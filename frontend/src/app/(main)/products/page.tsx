@@ -41,7 +41,7 @@ function previewAutoSku() {
 }
 
 export default function ProductsPage() {
-  const role = 'owner';
+  const role: string = 'owner';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

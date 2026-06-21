@@ -226,7 +226,7 @@ function newBill(id?: string): Bill {
 
 // ─── Main Component ────────────────────────────────────────────
 export default function PosPage() {
-  const role = "owner";
+  const role: string = "owner";
   const cashierName = "cashier";
 
   const searchRef = useRef<HTMLInputElement>(null);

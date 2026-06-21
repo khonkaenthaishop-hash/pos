@@ -28,7 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function UsersSettingsPage() {
-  const role = 'owner';
+  const role: string = 'owner';
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
