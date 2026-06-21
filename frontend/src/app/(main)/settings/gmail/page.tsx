@@ -70,7 +70,9 @@ function GmailSettingsContent() {
     }
   }, []);
 
-  useEffect(() => { loadStatus(); }, [loadStatus]);
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   // ── Connect Gmail ──
   const handleConnect = async () => {
@@ -130,12 +132,12 @@ function GmailSettingsContent() {
   if (isLoading) {
     return (
       <SettingsPageShell
-        title="การเชื่อมต่อ Gmail"
-        description="เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งอัตโนมัติ"
+        title='การเชื่อมต่อ Gmail'
+        description='เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งอัตโนมัติ'
       >
         <SettingSection>
-          <div className="flex items-center gap-2 py-4 text-sm text-slate-400">
-            <Loader2 size={16} className="animate-spin" />
+          <div className='flex items-center gap-2 py-4 text-sm text-slate-400'>
+            <Loader2 size={16} className='animate-spin' />
             กำลังโหลด...
           </div>
         </SettingSection>
@@ -147,50 +149,56 @@ function GmailSettingsContent() {
 
   return (
     <SettingsPageShell
-      title="การเชื่อมต่อ Gmail"
-      description="เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งจาก 7-11 อัตโนมัติ"
+      title='การเชื่อมต่อ Gmail'
+      description='เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งจาก 7-11 อัตโนมัติ'
     >
-      <SettingSection title="สถานะ Gmail">
+      <SettingSection title='สถานะ Gmail'>
         {connected ? (
           /* ─── Connected state ─── */
-          <div className="space-y-5">
+          <div className='space-y-5'>
             {/* Status indicator */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            <div className='flex items-center gap-3'>
+              <div className='flex items-center gap-2'>
+                <span className='relative flex h-2.5 w-2.5'>
+                  <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75' />
+                  <span className='relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500' />
                 </span>
-                <span className="text-sm font-semibold text-green-700">เชื่อมต่อแล้ว</span>
+                <span className='text-sm font-semibold text-green-700'>
+                  เชื่อมต่อแล้ว
+                </span>
               </div>
-              <span className="text-sm text-slate-500">({status?.email ?? ''})</span>
+              <span className='text-sm text-slate-500'>
+                ({status?.email ?? ''})
+              </span>
             </div>
 
             {/* Sync times */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-xs text-slate-400 mb-1">Sync ล่าสุด</div>
-                <div className="text-sm font-medium text-slate-700">
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='bg-slate-50 rounded-lg px-4 py-3'>
+                <div className='text-xs text-slate-400 mb-1'>Sync ล่าสุด</div>
+                <div className='text-sm font-medium text-slate-700'>
                   {formatBuddhistDateTime(status?.lastSyncAt ?? null)}
                 </div>
               </div>
-              <div className="bg-slate-50 rounded-lg px-4 py-3">
-                <div className="text-xs text-slate-400 mb-1">Sync ถัดไป (โดยประมาณ)</div>
-                <div className="text-sm font-medium text-slate-700">
+              <div className='bg-slate-50 rounded-lg px-4 py-3'>
+                <div className='text-xs text-slate-400 mb-1'>
+                  Sync ถัดไป (โดยประมาณ)
+                </div>
+                <div className='text-sm font-medium text-slate-700'>
                   {formatBuddhistDateTime(status?.nextSyncAt ?? null)}
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 pt-1">
+            <div className='flex items-center gap-3 pt-1'>
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition"
+                className='flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition'
               >
                 {isSyncing ? (
-                  <Loader2 size={15} className="animate-spin" />
+                  <Loader2 size={15} className='animate-spin' />
                 ) : (
                   <RefreshCw size={15} />
                 )}
@@ -199,7 +207,7 @@ function GmailSettingsContent() {
 
               <button
                 onClick={() => setShowDisconnectConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition"
+                className='flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition'
               >
                 <Unlink size={15} />
                 ยกเลิกการเชื่อมต่อ
@@ -208,24 +216,26 @@ function GmailSettingsContent() {
           </div>
         ) : (
           /* ─── Disconnected state ─── */
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <WifiOff size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-500 font-medium">ยังไม่ได้เชื่อมต่อ</span>
+          <div className='space-y-4'>
+            <div className='flex items-center gap-2'>
+              <WifiOff size={16} className='text-slate-400' />
+              <span className='text-sm text-slate-500 font-medium'>
+                ยังไม่ได้เชื่อมต่อ
+              </span>
             </div>
 
-            <p className="text-sm text-slate-500 leading-relaxed">
-              เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งจาก 7-11 อัตโนมัติ เช่น C Number,
-              สถานะพัสดุ, และยอดเงิน
+            <p className='text-sm text-slate-500 leading-relaxed'>
+              เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งจาก 7-11 อัตโนมัติ เช่น C
+              Number, สถานะพัสดุ, และยอดเงิน
             </p>
 
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition"
+              className='flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition'
             >
               {isConnecting ? (
-                <Loader2 size={15} className="animate-spin" />
+                <Loader2 size={15} className='animate-spin' />
               ) : (
                 <Mail size={15} />
               )}
@@ -236,18 +246,18 @@ function GmailSettingsContent() {
       </SettingSection>
 
       {/* How it works section */}
-      <SettingSection title="วิธีการทำงาน">
-        <div className="space-y-2 text-sm text-slate-600">
-          <div className="flex items-start gap-2">
-            <Wifi size={14} className="text-orange-400 mt-0.5 shrink-0" />
+      <SettingSection title='วิธีการทำงาน'>
+        <div className='space-y-2 text-sm text-slate-600'>
+          <div className='flex items-start gap-2'>
+            <Wifi size={14} className='text-orange-400 mt-0.5 shrink-0' />
             <span>ระบบจะ sync email จาก 7-11 ทุก 15 นาทีอัตโนมัติ</span>
           </div>
-          <div className="flex items-start gap-2">
-            <RefreshCw size={14} className="text-orange-400 mt-0.5 shrink-0" />
-            <span>กด "Sync ตอนนี้" เพื่อดึงข้อมูลทันที</span>
+          <div className='flex items-start gap-2'>
+            <RefreshCw size={14} className='text-orange-400 mt-0.5 shrink-0' />
+            <span>กด Sync ตอนนี้ เพื่อดึงข้อมูลทันที</span>
           </div>
-          <div className="flex items-start gap-2">
-            <Mail size={14} className="text-orange-400 mt-0.5 shrink-0" />
+          <div className='flex items-start gap-2'>
+            <Mail size={14} className='text-orange-400 mt-0.5 shrink-0' />
             <span>ดู C Number และยืนยันรายการที่หน้า ติดตามการจัดส่ง</span>
           </div>
         </div>
@@ -255,38 +265,42 @@ function GmailSettingsContent() {
 
       {/* Disconnect confirmation dialog */}
       {showDisconnectConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-200">
-            <div className="px-5 py-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                  <Unlink size={18} className="text-red-600" />
+        <div className='fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4'>
+          <div className='w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-200'>
+            <div className='px-5 py-5'>
+              <div className='flex items-center gap-3 mb-3'>
+                <div className='w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0'>
+                  <Unlink size={18} className='text-red-600' />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-gray-900">ยกเลิกการเชื่อมต่อ Gmail?</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{status?.email}</div>
+                  <div className='text-sm font-bold text-gray-900'>
+                    ยกเลิกการเชื่อมต่อ Gmail?
+                  </div>
+                  <div className='text-xs text-gray-400 mt-0.5'>
+                    {status?.email}
+                  </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mt-3">
+              <p className='text-sm text-gray-600 mt-3'>
                 ระบบจะหยุดดึงข้อมูลจาก Gmail และ token จะถูกลบออก
                 คุณสามารถเชื่อมต่อใหม่ได้ตลอดเวลา
               </p>
             </div>
-            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+            <div className='px-5 py-4 border-t border-gray-100 flex justify-end gap-2'>
               <button
                 onClick={() => setShowDisconnectConfirm(false)}
                 disabled={isDisconnecting}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold transition"
+                className='px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold transition'
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleDisconnect}
                 disabled={isDisconnecting}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition"
+                className='flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition'
               >
                 {isDisconnecting ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 size={14} className='animate-spin' />
                 ) : (
                   <Unlink size={14} />
                 )}
@@ -307,12 +321,12 @@ export default function GmailSettingsPage() {
     <Suspense
       fallback={
         <SettingsPageShell
-          title="การเชื่อมต่อ Gmail"
-          description="เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งอัตโนมัติ"
+          title='การเชื่อมต่อ Gmail'
+          description='เชื่อมต่อ Gmail เพื่อดึงข้อมูลการจัดส่งอัตโนมัติ'
         >
           <SettingSection>
-            <div className="flex items-center gap-2 py-4 text-sm text-slate-400">
-              <Loader2 size={16} className="animate-spin" />
+            <div className='flex items-center gap-2 py-4 text-sm text-slate-400'>
+              <Loader2 size={16} className='animate-spin' />
               กำลังโหลด...
             </div>
           </SettingSection>
