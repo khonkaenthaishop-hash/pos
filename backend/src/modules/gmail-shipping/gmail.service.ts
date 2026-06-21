@@ -33,11 +33,13 @@ export class GmailService {
   private createOAuth2Client(): OAuth2Client {
     const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.configService.get<string>('GOOGLE_CLIENT_SECRET');
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-    const redirectUri = `${frontendUrl}/settings/gmail?callback=true`;
+    const redirectUri = this.configService.get<string>('GOOGLE_REDIRECT_URI');
 
     if (!clientId || !clientSecret) {
       throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set');
+    }
+    if (!redirectUri) {
+      throw new Error('GOOGLE_REDIRECT_URI must be set');
     }
 
     return new google.auth.OAuth2(clientId, clientSecret, redirectUri);

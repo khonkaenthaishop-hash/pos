@@ -69,7 +69,16 @@ export default function ReportsPage() {
           setPaymentRows([]);
         }
 
-        setProfit((profitRes.data as ProfitRow | null) || null);
+        const profitRows = (profitRes.data as Array<{ revenue: string; cost: string; profit: string }>) || [];
+        if (Array.isArray(profitRows) && profitRows.length > 0) {
+          setProfit({
+            totalRevenue: profitRows.reduce((s, r) => s + Number(r.revenue || 0), 0),
+            totalCost:    profitRows.reduce((s, r) => s + Number(r.cost    || 0), 0),
+            grossProfit:  profitRows.reduce((s, r) => s + Number(r.profit  || 0), 0),
+          });
+        } else {
+          setProfit(null);
+        }
       })
       .catch(err => console.error('[Reports] load failed:', err))
       .finally(() => setIsLoading(false));

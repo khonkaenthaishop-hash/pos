@@ -10,7 +10,10 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { GmailService } from './gmail.service';
 import { ShippingSyncService } from './shipping-sync.service';
@@ -25,6 +28,7 @@ export class GmailShippingController {
   constructor(
     private readonly gmailService: GmailService,
     private readonly syncService: ShippingSyncService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ─── OAuth2 — Get auth URL ─────────────────────────────────────────
@@ -41,12 +45,17 @@ export class GmailShippingController {
   // ─── OAuth2 — Callback (public, called by Google) ─────────────────
   @Get('auth/callback')
   @ApiOperation({ summary: 'OAuth2 callback — called by Google (no auth required)' })
-  async exchangeCode(@Query('code') code: string) {
+  async exchangeCode(@Query('code') code: string, @Res() res: Response) {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://khonkaen-pos.vercel.app';
     if (!code) {
-      return { success: false, message: 'Missing authorization code' };
+      return res.redirect(`${frontendUrl}/settings/gmail?error=missing_code`);
     }
-    await this.gmailService.exchangeCodeForTokens(code);
-    return { success: true, message: 'Gmail connected successfully' };
+    try {
+      await this.gmailService.exchangeCodeForTokens(code);
+      return res.redirect(`${frontendUrl}/settings/gmail?callback=true`);
+    } catch {
+      return res.redirect(`${frontendUrl}/settings/gmail?error=exchange_failed`);
+    }
   }
 
   // ─── Connection status ─────────────────────────────────────────────
