@@ -54,9 +54,23 @@ export class GmailService {
     });
   }
 
+  private async retryAsync<T>(fn: () => Promise<T>, retries = 3, delayMs = 1000): Promise<T> {
+    let lastErr: unknown;
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        this.logger.warn(`Attempt ${i + 1}/${retries} failed: ${err instanceof Error ? err.message : String(err)}`);
+        if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+      }
+    }
+    throw lastErr;
+  }
+
   async exchangeCodeForTokens(code: string): Promise<void> {
     const oauth2Client = this.createOAuth2Client();
-    const { tokens } = await oauth2Client.getToken(code);
+    const { tokens } = await this.retryAsync(() => oauth2Client.getToken(code));
 
     if (!tokens.access_token || !tokens.refresh_token) {
       throw new Error('Failed to obtain access_token or refresh_token from Google');
