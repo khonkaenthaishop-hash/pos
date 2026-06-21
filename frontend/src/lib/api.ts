@@ -6,12 +6,47 @@ const api = axios.create({
   timeout: 15000,
 });
 
+function getTokenCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|; )access_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function clearTokenCookie() {
+  document.cookie = "access_token=; path=/; max-age=0; SameSite=Strict";
+}
+
+// Request interceptor — แนบ token จาก cookie
+api.interceptors.request.use((config) => {
+  const token = getTokenCookie();
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor — 401 → ล้าง token แล้ว redirect login
+// ยกเว้น login page เพื่อไม่ให้กิน error message เวลาพิมพ์รหัสผ่านผิด
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (
+      err.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      clearTokenCookie();
+      window.location.href = "/login";
+    }
+    return Promise.reject(err);
+  },
+);
+
 // ── Auth ─────────────────────────────────────────────────────────
 export const authApi = {
   login: (username: string, password: string) =>
     api.post("/auth/login", { username, password }),
   me: () => api.get("/auth/me"),
-  /** Server-side check: returns 200 if caller is manager/owner, 401 otherwise */
   verifyManager: () => api.post("/auth/verify-manager"),
 };
 
@@ -59,30 +94,23 @@ export const ordersApi = {
   checkItem: (orderId: string, itemId: string) =>
     api.patch(`/orders/${orderId}/items/${itemId}/check`),
   todaySummary: () => api.get("/orders/today-summary"),
-  // Opening cash
   openCash: (amount: number) =>
     api.post("/orders/open-cash", { amount, date: new Date().toISOString().slice(0, 10) }),
   getOpenCash: (date: string) =>
     api.get("/orders/open-cash", { params: { date } }),
-  // X/Z Reports
   xReport: (date: string) => api.get("/orders/report/x", { params: { date } }),
   zReport: (date: string) => api.get("/orders/report/z", { params: { date } }),
-  // Slip
   saveSlip: (id: string, slipUrl: string) =>
     api.patch(`/orders/${id}/slip`, { slipUrl }),
-  // Return
   returnOrder: (id: string, reason: string) =>
     api.post(`/orders/${id}/return`, { reason }),
 };
 
 // ── Held Orders ──────────────────────────────────────────────────
 export const heldOrdersApi = {
-  /** List summaries (no cart JSON) */
   list: (all?: boolean) =>
     api.get("/held-orders", { params: all ? { all: "true" } : undefined }),
-  /** Get full record including cart */
   getById: (id: string) => api.get(`/held-orders/${id}`),
-  /** Save cart as held order */
   hold: (data: {
     label?: string;
     customerId?: string;
@@ -91,9 +119,7 @@ export const heldOrdersApi = {
     discount?: number;
     note?: string;
   }) => api.post("/held-orders", data),
-  /** Resume (returns full record + deletes it) */
   resume: (id: string) => api.post(`/held-orders/${id}/resume`),
-  /** Permanently discard */
   discard: (id: string) => api.delete(`/held-orders/${id}`),
 };
 
@@ -117,7 +143,6 @@ export const shipmentsApi = {
     api.patch(`/shipments/${id}/notify`, data),
   byOrder: (orderId: string) => api.get(`/shipments/order/${orderId}`),
   pendingNotify: () => api.get("/shipments/pending-notify"),
-  /** Search orders that are eligible to be shipped (PENDING / CONFIRMED status) */
   shippableOrders: (search?: string) =>
     api.get("/shipments/shippable-orders", { params: { search } }),
 };
@@ -181,15 +206,11 @@ export const usersApi = {
 
 // ── Cashier Sessions ─────────────────────────────────────────────
 export const cashierSessionsApi = {
-  /** Returns today's session or null if none exists */
   getToday: () => api.get('/cashier-sessions/today'),
-  /** Open a session. 409 if already open today */
   open: (openingAmount: number, note?: string) =>
     api.post('/cashier-sessions/open', { openingAmount, note }),
-  /** Close today's session */
   close: (closingAmount: number, note?: string) =>
     api.post('/cashier-sessions/close', { closingAmount, note }),
-  /** Manager: list sessions */
   list: (from?: string, to?: string) =>
     api.get('/cashier-sessions', { params: { from, to } }),
 };
