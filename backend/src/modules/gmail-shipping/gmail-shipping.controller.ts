@@ -33,8 +33,9 @@ export class GmailShippingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER)
   @ApiOperation({ summary: 'Get Gmail OAuth2 authorization URL' })
-  getAuthUrl() {
-    return this.gmailService.getAuthUrl();
+  async getAuthUrl() {
+    const url = await this.gmailService.getAuthUrl();
+    return { url };
   }
 
   // ─── OAuth2 — Callback (public, called by Google) ─────────────────

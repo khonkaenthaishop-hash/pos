@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 
 export default auth(req => {
   const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
+  // ต้องมี accessToken ด้วย — session ที่ไม่มี token ถือว่ายังไม่ได้ login
+  const isLoggedIn = !!(req.auth as (typeof req.auth & { accessToken?: string }) | null)?.accessToken;
   const isPublic = nextUrl.pathname === '/login';
   const isRoot = nextUrl.pathname === '/';
 
