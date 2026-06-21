@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingCart, Package, Tag,
   Warehouse, BarChart2, Shield, Truck, Users, Layers,
-  PackagePlus, ClipboardList, Trash2, Settings, Menu, X, ChevronLeft, History,
+  PackagePlus, ClipboardList, Trash2, Settings, Menu, X, ChevronLeft, History, LogOut,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -113,7 +113,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </nav>
 
         <div className="border-t border-slate-800 p-2">
-          <div className={cn('flex items-center gap-2.5 px-1 py-2', collapsed && 'justify-center')}>
+          <div className={cn('flex items-center gap-2 px-1 py-2', collapsed ? 'justify-center' : 'justify-between')}>
             {!collapsed && (
               <button
                 onClick={toggleLang}
@@ -123,6 +123,16 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 {LANG_LABEL[lang]}
               </button>
             )}
+            <button
+              onClick={() => {
+                document.cookie = 'access_token=; path=/; max-age=0; SameSite=Strict';
+                window.location.href = '/login';
+              }}
+              className="text-slate-500 hover:text-red-400 transition-colors"
+              title="ออกจากระบบ"
+            >
+              <LogOut size={15} />
+            </button>
           </div>
         </div>
       </aside>
