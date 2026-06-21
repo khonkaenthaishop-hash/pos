@@ -385,10 +385,16 @@ export class ProductsService {
       .getMany();
   }
 
-  async getExpiringProducts(_daysAhead: number = 7) {
+  async getExpiringProducts(daysAhead: number = 7) {
+    const today = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(today.getDate() + daysAhead);
     return this.productsRepo
       .createQueryBuilder('p')
       .where('p.is_active = true')
+      .andWhere('p.expiry_date IS NOT NULL')
+      .andWhere('p.expiry_date <= :cutoff', { cutoff })
+      .orderBy('p.expiry_date', 'ASC')
       .getMany();
   }
 }
