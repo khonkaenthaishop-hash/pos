@@ -57,32 +57,32 @@ export class StockTransaction {
   quantity: number;
 
   @Column({ nullable: true, length: 50 })
-  unit: string;
+  unit: string | null;
 
   @Column({ name: 'cost_price', type: 'decimal', precision: 10, scale: 4, nullable: true })
-  costPrice: number;
+  costPrice: number | null;
 
   @Column({ name: 'reference_no', nullable: true, length: 100 })
-  referenceNo: string;
+  referenceNo: string | null;
 
   @Column({ nullable: true, type: 'text' })
-  notes: string;
+  notes: string | null;
 
   @Column({ name: 'balance_after', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  balanceAfter: number;
+  balanceAfter: number | null;
 
   @Column({ name: 'user_id', nullable: true })
-  userId: string;
+  userId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: User | null;
 
   @Column({ name: 'location_id', nullable: true })
-  locationId: number;
+  locationId: number | null;
 
   @Column({ name: 'supplier_id', nullable: true })
-  supplierId: string;
+  supplierId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

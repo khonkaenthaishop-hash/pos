@@ -40,21 +40,21 @@ export class InventoryMovement {
   quantityBase: number;
 
   @Column({ name: 'unit_input', nullable: true, length: 50 })
-  unitInput: string;
+  unitInput: string | null;
 
   @Column({ name: 'unit_base', nullable: true, length: 50 })
-  unitBase: string;
+  unitBase: string | null;
 
   // ── Financials ─────────────────────────────────────────────────
   @Column({ name: 'cost_price', type: 'decimal', precision: 10, scale: 4, nullable: true })
-  costPrice: number;
+  costPrice: number | null;
 
   // ── Reference ──────────────────────────────────────────────────
   @Column({ name: 'reference_no', nullable: true, length: 100 })
-  referenceNo: string;
+  referenceNo: string | null;
 
   @Column({ type: 'text', nullable: true })
-  notes: string;
+  notes: string | null;
 
   // ── Stock snapshot ─────────────────────────────────────────────
   @Column({ name: 'balance_before', type: 'decimal', precision: 12, scale: 2 })
@@ -65,14 +65,14 @@ export class InventoryMovement {
 
   // ── Who / when ─────────────────────────────────────────────────
   @Column({ name: 'user_id', nullable: true })
-  userId: string;
+  userId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: User | null;
 
   @Column({ name: 'supplier_id', nullable: true })
-  supplierId: string;
+  supplierId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

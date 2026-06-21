@@ -17,7 +17,7 @@ const CARRIERS = {
 @Controller('carriers')
 export class CarriersController {
   @Get() findAll() { return Object.values(CARRIERS); }
-  @Get(':key') findOne(@Param('key') key: string) { return CARRIERS[key] || null; }
+  @Get(':key') findOne(@Param('key') key: string) { return (CARRIERS as Record<string, unknown>)[key] || null; }
 }
 
 @Module({ controllers: [CarriersController] })

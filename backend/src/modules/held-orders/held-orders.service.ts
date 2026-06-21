@@ -33,16 +33,16 @@ export class HeldOrdersService {
 
   /** Persist a cart as a held order. Returns the full saved record. */
   async hold(dto: HoldDto, cashierId: string): Promise<HeldOrder> {
-    const entity = this.repo.create({
-      label: dto.label || null,
+    const entity: HeldOrder = this.repo.create({
+      label: dto.label || undefined,
       cashierId,
-      customerId: dto.customerId || null,
-      customerName: dto.customerName || null,
+      customerId: dto.customerId || undefined,
+      customerName: dto.customerName || undefined,
       cart: dto.cart,
       discount: dto.discount ?? 0,
-      note: dto.note || null,
+      note: dto.note || undefined,
     });
-    const saved = await this.repo.save(entity);
+    const saved: HeldOrder = await this.repo.save(entity);
     this.logger.log(`Held order created: id=${saved.id} cashier=${cashierId} items=${dto.cart.length}`);
     return saved;
   }
