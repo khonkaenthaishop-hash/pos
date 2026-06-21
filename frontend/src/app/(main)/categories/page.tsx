@@ -201,13 +201,15 @@ export default function CategoriesPage() {
 
         {/* List */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {isLoading ? (
+          {isLoading && (
             <div className="py-16 flex items-center justify-center gap-2 text-gray-400">
               <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
             </div>
-          ) : categories.length === 0 ? (
+          )}
+          {!isLoading && categories.length === 0 && (
             <div className="py-16 text-center text-gray-300 text-sm">ไม่พบหมวดหมู่</div>
-          ) : (
+          )}
+          {!isLoading && categories.length > 0 && (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">

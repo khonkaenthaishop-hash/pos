@@ -81,7 +81,7 @@ export default function AnalyticsSettingsPage() {
           <FieldRow label="เริ่มต้นปีงบประมาณ (เดือน)">
             <select {...register('fiscalYearStart', { valueAsNumber: true })} className="w-48 border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
               {['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'].map((m, i) => (
-                <option key={i+1} value={i+1}>{m}</option>
+                <option key={m} value={i+1}>{m}</option>
               ))}
             </select>
           </FieldRow>

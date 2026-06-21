@@ -40,6 +40,213 @@ function previewAutoSku() {
   return `SKU-${ts}-${rand}`;
 }
 
+// ─── Product table row (extracted to reduce ProductsPage function size) ─
+
+type LocationRow = { locationId: number; fullCode: string; quantity: number; priority: number };
+
+function ProductTableRow({
+  p,
+  role,
+  categories,
+  editProductId,
+  editPriceId,
+  editLocationId,
+  priceForm,
+  locationRows,
+  onEdit,
+  onApprove,
+  onTogglePrice,
+  onToggleLocation,
+  onUpdatePrice,
+  onSaveLocations,
+  onCancelLocation,
+  onCancelPrice,
+  onPriceFormChange,
+  onLocationRowChange,
+}: {
+  p: Product;
+  role: string;
+  categories: Category[];
+  editProductId: string | null;
+  editPriceId: string | null;
+  editLocationId: string | null;
+  priceForm: { retailPrice: string; wholesalePrice: string; costPrice: string };
+  locationRows: LocationRow[];
+  onEdit: (p: Product) => void;
+  onApprove: (id: string) => void;
+  onTogglePrice: (p: Product) => void;
+  onToggleLocation: (id: string) => void;
+  onUpdatePrice: (id: string) => void;
+  onSaveLocations: (id: string) => void;
+  onCancelLocation: () => void;
+  onCancelPrice: () => void;
+  onPriceFormChange: (f: { retailPrice: string; wholesalePrice: string; costPrice: string }) => void;
+  onLocationRowChange: (rows: LocationRow[]) => void;
+}) {
+  const getCategoryName = (categoryId: unknown) => {
+    const cat = categories.find(c => c.id === categoryId);
+    return cat ? `${cat.icon ? `${cat.icon  } ` : ''}${cat.nameTh}` : null;
+  };
+
+  const stockColorClass = (() => {
+    if (p.currentStock === 0) return 'text-red-500';
+    if (Number(p.currentStock) <= Number(p.minStock)) return 'text-amber-500';
+    return 'text-gray-700';
+  })();
+
+  return (
+    <Fragment>
+      <tr className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+        <td className="px-5 py-3.5">
+          <div className="font-medium text-gray-800">{p.nameTh as string}</div>
+          {!!p.nameZh && <div className="text-xs text-gray-400 mt-0.5">{p.nameZh as string}</div>}
+          <div className="flex items-center gap-2 mt-0.5">
+            {!!p.barcode && <span className="text-xs text-gray-300 font-mono">{p.barcode as string}</span>}
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TEMP_STYLE[p.temperatureType as string] || 'bg-gray-100 text-gray-400'}`}>
+              {TEMP_LABEL[p.temperatureType as string] || '-'}
+            </span>
+            {!!p.unit && <span className="text-xs text-gray-400">/{p.unit as string}</span>}
+          </div>
+        </td>
+        <td className="px-3 py-3.5 text-xs text-gray-500">
+          {getCategoryName(p.categoryId) || <span className="text-gray-200">—</span>}
+        </td>
+        <td className="text-right px-4 py-3.5">
+          <span className="font-semibold text-gray-800">{Number(p.retailPrice).toLocaleString()} ฿</span>
+        </td>
+        <td className="text-right px-4 py-3.5 text-blue-400 text-xs">
+          {p.wholesalePrice != null ? `${Number(p.wholesalePrice).toLocaleString()} ฿` : <span className="text-gray-200">—</span>}
+        </td>
+        <td className="text-center px-4 py-3.5">
+          <span className={`font-bold text-sm ${stockColorClass}`}>
+            {p.currentStock as number}
+          </span>
+        </td>
+        <td className="text-center px-4 py-3.5">
+          {p.isApproved ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+              <Check size={11} /> อนุมัติ
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+              <Clock size={11} /> รอ
+            </span>
+          )}
+        </td>
+        <td className="text-center px-4 py-3.5">
+          <div className="flex gap-1.5 justify-center">
+            {role === 'owner' && (
+              <button
+                onClick={() => onEdit(p)}
+                className={`px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1 ${
+                  editProductId === p.id as string ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                }`}
+              >
+                <Pencil size={11} /> แก้ไข
+              </button>
+            )}
+            {!p.isApproved && ['owner', 'manager'].includes(role) && (
+              <button onClick={() => onApprove(p.id as string)}
+                className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs transition">
+                อนุมัติ
+              </button>
+            )}
+            {role === 'owner' && (
+              <button
+                onClick={() => onTogglePrice(p)}
+                className={`px-2.5 py-1 rounded-lg text-xs transition ${editPriceId === p.id as string ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+                ราคา
+              </button>
+            )}
+            <button
+              onClick={() => onToggleLocation(p.id as string)}
+              className={`px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1 ${editLocationId === p.id as string ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+              <MapPin size={11} /> ตำแหน่ง
+            </button>
+          </div>
+        </td>
+      </tr>
+      {/* Inline location editor row */}
+      {editLocationId === p.id as string && (
+        <tr key={`${p.id as string}-loc`} className="border-t border-blue-100 bg-blue-50/30">
+          <td colSpan={7} className="px-5 py-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin size={13} className="text-blue-500" />
+                <span className="text-xs font-semibold text-blue-700">ตำแหน่งจัดเก็บ</span>
+              </div>
+              {locationRows.length === 0 && (
+                <p className="text-xs text-gray-400">ยังไม่มีตำแหน่ง — ตำแหน่งจะถูกจัดการผ่านการรับสินค้าหรือระบบ WMS</p>
+              )}
+              {locationRows.map((row, idx) => (
+                <div key={row.locationId} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-24 truncate font-mono">{row.fullCode}</span>
+                  <label className="text-xs text-gray-400">จำนวน</label>
+                  <input type="number" min={0} value={row.quantity}
+                    onChange={e => onLocationRowChange(locationRows.map((x, i) => i === idx ? { ...x, quantity: Number(e.target.value) } : x))}
+                    className="w-20 border border-blue-200 rounded-lg px-2 py-1 text-sm text-right outline-none focus:border-blue-400" />
+                  <label className="text-xs text-gray-400">ลำดับ</label>
+                  <input type="number" min={1} value={row.priority}
+                    onChange={e => onLocationRowChange(locationRows.map((x, i) => i === idx ? { ...x, priority: Number(e.target.value) } : x))}
+                    className="w-16 border border-blue-200 rounded-lg px-2 py-1 text-sm text-right outline-none focus:border-blue-400" />
+                </div>
+              ))}
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => onSaveLocations(p.id as string)}
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition">
+                  บันทึก
+                </button>
+                <button onClick={onCancelLocation}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition">
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+      {/* Inline price edit row */}
+      {editPriceId === p.id as string && (
+        <tr key={`${p.id as string}-price`} className="border-t border-orange-100 bg-orange-50/40">
+          <td colSpan={7} className="px-5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-500 w-20 shrink-0">แก้ไขราคา</span>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500">ปลีก</label>
+                <input type="number" value={priceForm.retailPrice}
+                  onChange={e => onPriceFormChange({ ...priceForm, retailPrice: e.target.value })}
+                  className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500">ส่ง</label>
+                <input type="number" value={priceForm.wholesalePrice}
+                  onChange={e => onPriceFormChange({ ...priceForm, wholesalePrice: e.target.value })}
+                  placeholder="—"
+                  className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500">ทุน</label>
+                <input type="number" value={priceForm.costPrice}
+                  onChange={e => onPriceFormChange({ ...priceForm, costPrice: e.target.value })}
+                  placeholder="—"
+                  className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
+              </div>
+              <button onClick={() => onUpdatePrice(p.id as string)}
+                className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition">
+                บันทึก
+              </button>
+              <button onClick={onCancelPrice}
+                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition">
+                ยกเลิก
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
 export default function ProductsPage() {
   const role: string = 'owner';
 
@@ -54,7 +261,6 @@ export default function ProductsPage() {
   const [editPriceId, setEditPriceId] = useState<string | null>(null);
   const [priceForm, setPriceForm] = useState({ retailPrice: '', wholesalePrice: '', costPrice: '' });
   const [editLocationId, setEditLocationId] = useState<string | null>(null);
-  type LocationRow = { locationId: number; fullCode: string; quantity: number; priority: number };
   const [locationRows, setLocationRows] = useState<LocationRow[]>([]);
 
   // Suppliers
@@ -316,11 +522,6 @@ export default function ProductsPage() {
     }
   };
 
-  const getCategoryName = (categoryId: unknown) => {
-    const cat = categories.find(c => c.id === categoryId);
-    return cat ? `${cat.icon ? cat.icon + ' ' : ''}${cat.nameTh}` : null;
-  };
-
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {showQuickAdd && (
@@ -364,7 +565,7 @@ export default function ProductsPage() {
             <select value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}
               className="appearance-none border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-sm outline-none focus:border-orange-400 bg-white text-gray-600">
               <option value="">ทุกหมวดหมู่</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.nameTh}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
             </select>
             <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -444,7 +645,7 @@ export default function ProductsPage() {
                     <select value={addForm.categoryId} onChange={e => setAddForm(f => ({ ...f, categoryId: e.target.value }))}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
                       <option value="">— เลือกหมวดหมู่ —</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.nameTh}</option>)}
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
                     </select>
                   </div>
                   <div>
@@ -818,166 +1019,38 @@ export default function ProductsPage() {
               ) : products.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-12 text-gray-300 text-sm">ไม่พบสินค้า</td></tr>
               ) : products.map((p) => (
-                <Fragment key={p.id as string}>
-                  <tr className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <div className="font-medium text-gray-800">{p.nameTh as string}</div>
-                      {!!p.nameZh && <div className="text-xs text-gray-400 mt-0.5">{p.nameZh as string}</div>}
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {!!p.barcode && <span className="text-xs text-gray-300 font-mono">{p.barcode as string}</span>}
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TEMP_STYLE[p.temperatureType as string] || 'bg-gray-100 text-gray-400'}`}>
-                          {TEMP_LABEL[p.temperatureType as string] || '-'}
-                        </span>
-                        {!!p.unit && <span className="text-xs text-gray-400">/{p.unit as string}</span>}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3.5 text-xs text-gray-500">
-                      {getCategoryName(p.categoryId) || <span className="text-gray-200">—</span>}
-                    </td>
-                    <td className="text-right px-4 py-3.5">
-                      <span className="font-semibold text-gray-800">{Number(p.retailPrice).toLocaleString()} ฿</span>
-                    </td>
-                    <td className="text-right px-4 py-3.5 text-blue-400 text-xs">
-                      {p.wholesalePrice != null ? `${Number(p.wholesalePrice).toLocaleString()} ฿` : <span className="text-gray-200">—</span>}
-                    </td>
-                    <td className="text-center px-4 py-3.5">
-                      <span className={`font-bold text-sm ${p.currentStock === 0 ? 'text-red-500' : Number(p.currentStock) <= Number(p.minStock) ? 'text-amber-500' : 'text-gray-700'}`}>
-                        {p.currentStock as number}
-                      </span>
-                    </td>
-                    <td className="text-center px-4 py-3.5">
-                      {p.isApproved ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                          <Check size={11} /> อนุมัติ
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
-                          <Clock size={11} /> รอ
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-center px-4 py-3.5">
-                      <div className="flex gap-1.5 justify-center">
-                        {role === 'owner' && (
-                          <button
-                            onClick={() => openEditProduct(p)}
-                            className={`px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1 ${
-                              editProductId === p.id as string ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                            }`}
-                          >
-                            <Pencil size={11} /> แก้ไข
-                          </button>
-                        )}
-                        {!p.isApproved && ['owner', 'manager'].includes(role) && (
-                          <button onClick={() => handleApprove(p.id as string)}
-                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs transition">
-                            อนุมัติ
-                          </button>
-                        )}
-                        {role === 'owner' && (
-                          <button
-                            onClick={() => {
-                              if (editPriceId === p.id as string) {
-                                setEditPriceId(null);
-                              } else {
-                                setEditPriceId(p.id as string);
-                                setPriceForm({
-                                  retailPrice: String(p.retailPrice),
-                                  wholesalePrice: String(p.wholesalePrice || ''),
-                                  costPrice: String(p.costPrice || ''),
-                                });
-                              }
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs transition ${editPriceId === p.id as string ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
-                            ราคา
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOpenLocationEditor(p.id as string)}
-                          className={`px-2.5 py-1 rounded-lg text-xs transition flex items-center gap-1 ${editLocationId === p.id as string ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
-                          <MapPin size={11} /> ตำแหน่ง
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {/* Inline location editor row */}
-                  {editLocationId === p.id as string && (
-                    <tr key={`${p.id}-loc`} className="border-t border-blue-100 bg-blue-50/30">
-                      <td colSpan={7} className="px-5 py-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 mb-1">
-                            <MapPin size={13} className="text-blue-500" />
-                            <span className="text-xs font-semibold text-blue-700">ตำแหน่งจัดเก็บ</span>
-                          </div>
-                          {locationRows.length === 0 && (
-                            <p className="text-xs text-gray-400">ยังไม่มีตำแหน่ง — ตำแหน่งจะถูกจัดการผ่านการรับสินค้าหรือระบบ WMS</p>
-                          )}
-                          {locationRows.map((row, idx) => (
-                            <div key={row.locationId} className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-24 truncate font-mono">{row.fullCode}</span>
-                              <label className="text-xs text-gray-400">จำนวน</label>
-                              <input type="number" min={0} value={row.quantity}
-                                onChange={e => setLocationRows(r => r.map((x, i) => i === idx ? { ...x, quantity: Number(e.target.value) } : x))}
-                                className="w-20 border border-blue-200 rounded-lg px-2 py-1 text-sm text-right outline-none focus:border-blue-400" />
-                              <label className="text-xs text-gray-400">ลำดับ</label>
-                              <input type="number" min={1} value={row.priority}
-                                onChange={e => setLocationRows(r => r.map((x, i) => i === idx ? { ...x, priority: Number(e.target.value) } : x))}
-                                className="w-16 border border-blue-200 rounded-lg px-2 py-1 text-sm text-right outline-none focus:border-blue-400" />
-                            </div>
-                          ))}
-                          <div className="flex gap-2 mt-1">
-                            <button onClick={() => handleSaveLocations(p.id as string)}
-                              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition">
-                              บันทึก
-                            </button>
-                            <button onClick={() => setEditLocationId(null)}
-                              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition">
-                              ยกเลิก
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {/* Inline price edit row */}
-                  {editPriceId === p.id as string && (
-                    <tr key={`${p.id}-price`} className="border-t border-orange-100 bg-orange-50/40">
-                      <td colSpan={7} className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-medium text-gray-500 w-20 shrink-0">แก้ไขราคา</span>
-                          <div className="flex items-center gap-1.5">
-                            <label className="text-xs text-gray-500">ปลีก</label>
-                            <input type="number" value={priceForm.retailPrice}
-                              onChange={e => setPriceForm(f => ({ ...f, retailPrice: e.target.value }))}
-                              className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <label className="text-xs text-gray-500">ส่ง</label>
-                            <input type="number" value={priceForm.wholesalePrice}
-                              onChange={e => setPriceForm(f => ({ ...f, wholesalePrice: e.target.value }))}
-                              placeholder="—"
-                              className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <label className="text-xs text-gray-500">ทุน</label>
-                            <input type="number" value={priceForm.costPrice}
-                              onChange={e => setPriceForm(f => ({ ...f, costPrice: e.target.value }))}
-                              placeholder="—"
-                              className="w-24 border border-orange-300 rounded-lg px-2 py-1.5 text-sm text-right outline-none focus:border-orange-500" />
-                          </div>
-                          <button onClick={() => handleUpdatePrice(p.id as string)}
-                            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition">
-                            บันทึก
-                          </button>
-                          <button onClick={() => setEditPriceId(null)}
-                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs transition">
-                            ยกเลิก
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <ProductTableRow
+                  key={p.id as string}
+                  p={p}
+                  role={role}
+                  categories={categories}
+                  editProductId={editProductId}
+                  editPriceId={editPriceId}
+                  editLocationId={editLocationId}
+                  priceForm={priceForm}
+                  locationRows={locationRows}
+                  onEdit={openEditProduct}
+                  onApprove={handleApprove}
+                  onTogglePrice={(prod) => {
+                    if (editPriceId === prod.id as string) {
+                      setEditPriceId(null);
+                    } else {
+                      setEditPriceId(prod.id as string);
+                      setPriceForm({
+                        retailPrice: String(prod.retailPrice),
+                        wholesalePrice: String(prod.wholesalePrice || ''),
+                        costPrice: String(prod.costPrice || ''),
+                      });
+                    }
+                  }}
+                  onToggleLocation={handleOpenLocationEditor}
+                  onUpdatePrice={handleUpdatePrice}
+                  onSaveLocations={handleSaveLocations}
+                  onCancelLocation={() => setEditLocationId(null)}
+                  onCancelPrice={() => setEditPriceId(null)}
+                  onPriceFormChange={setPriceForm}
+                  onLocationRowChange={setLocationRows}
+                />
               ))}
             </tbody>
           </table>

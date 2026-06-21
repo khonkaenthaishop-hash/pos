@@ -43,8 +43,11 @@ export default function PrinterSettingsPage() {
       const normalized = {
         ...DEFAULTS,
         ...data,
-        paperWidth:
-          data.paperWidth === 58 ? 55 : data.paperWidth === 80 ? 72 : data.paperWidth,
+        paperWidth: (() => {
+          if (data.paperWidth === 58) return 55;
+          if (data.paperWidth === 80) return 72;
+          return data.paperWidth;
+        })(),
       };
       reset(normalized);
     }

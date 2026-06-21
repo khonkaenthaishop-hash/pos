@@ -183,7 +183,7 @@ export function getShippingPrice(
   const tempRates = config.rates[temperature === 'frozen' ? 'cold' : temperature];
   if (!tempRates) return null;
 
-  if (size && tempRates[size]) return tempRates[size]!;
+  if (size && tempRates[size]) return tempRates[size] ?? null;
   return tempRates.default || null;
 }
 

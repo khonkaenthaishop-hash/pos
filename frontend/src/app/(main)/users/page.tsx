@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/lib/api';
 import { CheckCircle, KeyRound, Loader2, Pencil, UserCheck, UserPlus, Users, UserX, X } from 'lucide-react';
@@ -70,7 +70,7 @@ export default function UsersPage() {
 
   const pwStrength = passwordStrength(form.password, t);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await usersApi.list();
@@ -81,9 +81,9 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const activeCount = useMemo(() => users.filter(u => u.isActive !== false).length, [users]);
 
@@ -284,13 +284,15 @@ export default function UsersPage() {
         )}
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {isLoading ? (
+          {isLoading && (
             <div className="py-16 flex items-center justify-center gap-2 text-gray-400">
               <Loader2 size={18} className="animate-spin" /> {t('common.loading')}
             </div>
-          ) : users.length === 0 ? (
+          )}
+          {!isLoading && users.length === 0 && (
             <div className="py-16 text-center text-gray-300 text-sm">{t('users.empty')}</div>
-          ) : (
+          )}
+          {!isLoading && users.length > 0 && (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
@@ -336,7 +338,11 @@ export default function UsersPage() {
                           <button
                             onClick={() => openResetPassword(u)}
                             disabled={isSelf || currentRole !== 'owner'}
-                            title={currentRole !== 'owner' ? t('common.owner_only') : (isSelf ? t('users.err_reset_self') : undefined)}
+                            title={(() => {
+                              if (currentRole !== 'owner') return t('common.owner_only');
+                              if (isSelf) return t('users.err_reset_self');
+                              return undefined;
+                            })()}
                             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 text-amber-700 rounded-lg text-xs font-semibold transition"
                           >
                             <KeyRound size={14} />
@@ -346,13 +352,11 @@ export default function UsersPage() {
                             <button
                               onClick={() => handleDeactivate(u)}
                               disabled={busy || isSelf || currentRole !== 'owner'}
-                              title={
-                                isSelf
-                                  ? t('users.err_deactivate_self')
-                                  : currentRole !== 'owner'
-                                    ? t('common.owner_only')
-                                    : undefined
-                              }
+                              title={(() => {
+                                if (isSelf) return t('users.err_deactivate_self');
+                                if (currentRole !== 'owner') return t('common.owner_only');
+                                return undefined;
+                              })()}
                               className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-600 rounded-lg text-xs font-semibold transition"
                             >
                               {busy ? <Loader2 size={14} className="animate-spin" /> : <UserX size={14} />}

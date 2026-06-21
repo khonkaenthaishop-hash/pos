@@ -52,7 +52,9 @@ export default function AdjustPage() {
   };
 
   const updateRow = (id: string, field: keyof CountRow, value: string) => {
-    setRows(prev => ({ ...prev, [id]: { ...getRow(products.find(p => p.id === id)!), [field]: value } }));
+    const product = products.find(p => p.id === id);
+    if (!product) return;
+    setRows(prev => ({ ...prev, [id]: { ...getRow(product), [field]: value } }));
   };
 
   const handleSave = async (p: Product) => {
@@ -101,7 +103,7 @@ export default function AdjustPage() {
             <select value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}
               className="appearance-none border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-sm outline-none focus:border-blue-400 bg-white text-gray-600">
               <option value="">ทุกหมวดหมู่</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.nameTh}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
             </select>
             <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -124,15 +126,17 @@ export default function AdjustPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading && (
                 <tr><td colSpan={7} className="text-center py-12">
                   <div className="flex items-center justify-center gap-2 text-gray-400">
                     <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
                   </div>
                 </td></tr>
-              ) : products.length === 0 ? (
+              )}
+              {!isLoading && products.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-12 text-gray-300 text-sm">ไม่พบสินค้า</td></tr>
-              ) : products.map(p => {
+              )}
+              {!isLoading && products.map(p => {
                 const row = getRow(p);
                 const physical = row.physicalCount !== '' ? Number(row.physicalCount) : null;
                 const system = Number(p.currentStock);
@@ -146,9 +150,12 @@ export default function AdjustPage() {
                       <div className="text-xs text-gray-400">{p.barcode as string || ''} {p.unit ? `/ ${p.unit}` : ''}</div>
                     </td>
                     <td className="text-center px-4 py-3">
-                      <span className={`inline-block px-3 py-1 rounded-full font-bold text-sm ${
-                        system === 0 ? 'text-red-600 bg-red-50' : system <= Number(p.minStock) ? 'text-amber-600 bg-amber-50' : 'text-gray-700 bg-gray-100'
-                      }`}>{system}</span>
+                      {(() => {
+                        let stockCls = 'text-gray-700 bg-gray-100';
+                        if (system === 0) stockCls = 'text-red-600 bg-red-50';
+                        else if (system <= Number(p.minStock)) stockCls = 'text-amber-600 bg-amber-50';
+                        return <span className={`inline-block px-3 py-1 rounded-full font-bold text-sm ${stockCls}`}>{system}</span>;
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <input type="number" value={row.physicalCount} min={0}

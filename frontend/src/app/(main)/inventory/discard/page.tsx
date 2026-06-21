@@ -190,7 +190,7 @@ export default function DiscardPage() {
                 </thead>
                 <tbody>
                   {lines.map((line, i) => (
-                    <tr key={i} className="border-t border-gray-50 hover:bg-red-50/20">
+                    <tr key={`${line.product.id as string}-${line.unit}`} className="border-t border-gray-50 hover:bg-red-50/20">
                       <td className="px-5 py-3">
                         <div className="font-medium text-gray-800">{line.product.nameTh as string}</div>
                         <div className="text-xs text-gray-400 font-mono">

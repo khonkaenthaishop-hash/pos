@@ -47,15 +47,17 @@ export default function CustomerDropdown({ value, onChange, onCreateNew }: Props
       customersApi.list(query || undefined, 1, 20)
         .then(r => {
           const data: unknown = r.data;
-          const items =
-            Array.isArray(data)
-              ? data
-              : (typeof data === 'object' &&
-                  data !== null &&
-                  'items' in data &&
-                  Array.isArray((data as { items?: unknown }).items))
-                ? (data as { items: unknown[] }).items
-                : [];
+          let items: unknown[] = [];
+          if (Array.isArray(data)) {
+            items = data;
+          } else if (
+            typeof data === 'object' &&
+            data !== null &&
+            'items' in data &&
+            Array.isArray((data as { items?: unknown }).items)
+          ) {
+            items = (data as { items: unknown[] }).items;
+          }
           setResults(items as Customer[]);
         })
         .catch(() => {})
@@ -120,12 +122,13 @@ export default function CustomerDropdown({ value, onChange, onCreateNew }: Props
             </div>
           </div>
           <div className="max-h-48 overflow-y-auto">
-            {isLoading ? (
+            {isLoading && (
               <div className="p-3 text-xs text-gray-400 text-center">กำลังโหลด...</div>
-            ) : results.length === 0 ? (
+            )}
+            {!isLoading && results.length === 0 && (
               <div className="p-3 text-xs text-gray-400 text-center">ไม่พบลูกค้า</div>
-            ) : (
-              results.map(c => (
+            )}
+            {!isLoading && results.length > 0 && results.map(c => (
                 <button
                   key={c.id}
                   type="button"
@@ -145,8 +148,7 @@ export default function CustomerDropdown({ value, onChange, onCreateNew }: Props
                     </div>
                   </div>
                 </button>
-              ))
-            )}
+              ))}
           </div>
           {onCreateNew && (
             <div className="border-t border-gray-100 p-2">

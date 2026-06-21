@@ -209,8 +209,8 @@ export default function DashboardPage() {
             <div className="h-20 flex items-center justify-center text-gray-300 text-sm">สต็อกปกติทั้งหมด ✓</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-              {lowStock.map((p, i) => (
-                <div key={i} className="flex items-center justify-between text-sm px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+              {lowStock.map((p) => (
+                <div key={p.nameTh} className="flex items-center justify-between text-sm px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
                   <span className="text-gray-700 truncate flex-1 mr-2">{p.nameTh}</span>
                   <span className={`font-bold tabular-nums shrink-0 ${p.currentStock === 0 ? 'text-red-500' : 'text-amber-500'}`}>
                     {p.currentStock} ชิ้น

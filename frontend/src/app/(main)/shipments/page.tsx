@@ -158,8 +158,8 @@ function MismatchTooltip({ diff }: { diff: number }) {
 function TableSkeleton() {
   return (
     <div className="animate-pulse">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex gap-4 px-5 py-4 border-b border-slate-100">
+      {Array.from({ length: 5 }, (_, i) => i).map((i) => (
+        <div key={`skeleton-row-${i}`} className="flex gap-4 px-5 py-4 border-b border-slate-100">
           <div className="flex-1 space-y-1.5">
             <div className="h-3.5 bg-slate-200 rounded w-32" />
             <div className="h-3 bg-slate-100 rounded w-20" />
@@ -440,7 +440,7 @@ export default function ShipmentsPage() {
                 value={dateInputValue}
                 onChange={e => {
                   const v = e.target.value;
-                  if (v) setDate(new Date(v + 'T00:00:00'));
+                  if (v) setDate(new Date(`${v  }T00:00:00`));
                 }}
                 className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-orange-400"
               />
@@ -488,16 +488,19 @@ export default function ShipmentsPage() {
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Main table */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          {error ? (
+          {error && (
             <div className="py-16 text-center text-sm text-red-500">{error}</div>
-          ) : isLoading ? (
+          )}
+          {!error && isLoading && (
             <TableSkeleton />
-          ) : filtered.length === 0 ? (
+          )}
+          {!error && !isLoading && filtered.length === 0 && (
             <div className="py-16 text-center">
               <Truck size={32} className="mx-auto text-slate-200 mb-3" />
               <p className="text-sm text-slate-400">ไม่มีข้อมูลการจัดส่งในวันนี้</p>
             </div>
-          ) : (
+          )}
+          {!error && !isLoading && filtered.length > 0 && (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
@@ -624,15 +627,17 @@ export default function ShipmentsPage() {
 
           {unmatchedOpen && (
             <div className="border-t border-slate-100">
-              {isLoadingUnmatched ? (
+              {isLoadingUnmatched && (
                 <div className="flex items-center gap-2 px-5 py-4 text-xs text-slate-400">
                   <Loader2 size={13} className="animate-spin" /> กำลังโหลด...
                 </div>
-              ) : unmatchedEmails.length === 0 ? (
+              )}
+              {!isLoadingUnmatched && unmatchedEmails.length === 0 && (
                 <div className="px-5 py-4 text-sm text-slate-400 text-center">
                   ไม่มี email ที่รอ match
                 </div>
-              ) : (
+              )}
+              {!isLoadingUnmatched && unmatchedEmails.length > 0 && (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">

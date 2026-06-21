@@ -257,7 +257,7 @@ describe('buildReceipt — content', () => {
 
 describe('debugReceipt', () => {
   it('marks lines exceeding WIDTH with ❌', () => {
-    const badReceipt = 'x'.repeat(50) + '\n' + 'ok';
+    const badReceipt = `${'x'.repeat(50)  }\n` + `ok`;
     const debug = debugReceipt(badReceipt);
     expect(debug).toContain('❌');
   });

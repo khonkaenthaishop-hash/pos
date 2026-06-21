@@ -54,6 +54,10 @@ export default function SlipUpload({ value, onChange, required }: Props) {
     }
   };
 
+  let uploadBtnLabel = t('slip.upload');
+  if (isUploading) uploadBtnLabel = t('slip.uploading');
+  else if (value) uploadBtnLabel = t('slip.change');
+
   return (
     <div className="space-y-2">
       <div className={`border-2 border-dashed rounded-xl p-3 text-center transition ${required && !value ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
@@ -85,7 +89,7 @@ export default function SlipUpload({ value, onChange, required }: Props) {
         className="w-full flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
       >
         {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-        {isUploading ? t('slip.uploading') : (value ? t('slip.change') : t('slip.upload'))}
+        {uploadBtnLabel}
       </button>
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />

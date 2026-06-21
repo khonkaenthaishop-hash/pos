@@ -43,11 +43,12 @@ export default function CustomersPage() {
     try {
       const res = await customersApi.list(q, 1, 200);
       const data = res.data as unknown;
-      const items = Array.isArray(data)
-        ? data
-        : (typeof data === 'object' && data !== null && Array.isArray((data as Record<string, unknown>).items))
-          ? ((data as Record<string, unknown>).items as unknown[])
-          : [];
+      let items: unknown[] = [];
+      if (Array.isArray(data)) {
+        items = data;
+      } else if (typeof data === 'object' && data !== null && Array.isArray((data as Record<string, unknown>).items)) {
+        items = (data as Record<string, unknown>).items as unknown[];
+      }
       setCustomers(items as Customer[]);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -222,13 +223,15 @@ export default function CustomersPage() {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {isLoading ? (
+            {isLoading && (
               <div className="py-16 flex items-center justify-center gap-2 text-gray-400">
                 <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
               </div>
-            ) : customers.length === 0 ? (
+            )}
+            {!isLoading && customers.length === 0 && (
               <div className="py-16 text-center text-gray-300 text-sm">ไม่พบลูกค้า</div>
-            ) : (
+            )}
+            {!isLoading && customers.length > 0 && (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100">
@@ -288,11 +291,12 @@ export default function CustomersPage() {
           )}
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          {isLoadingDetail ? (
+          {isLoadingDetail && (
             <div className="py-8 flex items-center justify-center gap-2 text-gray-400">
               <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
             </div>
-          ) : showAdd ? (
+          )}
+          {!isLoadingDetail && showAdd && (
             <div className="space-y-3">
               {([['name','ชื่อ'],['nickname','ชื่อเล่น'],['phone','โทร'],['lineId','LINE'],['facebookId','Facebook']] as const).map(([k,label]) => (
                 <div key={k}>
@@ -326,9 +330,11 @@ export default function CustomersPage() {
                 บันทึก
               </button>
             </div>
-          ) : !selected ? (
+          )}
+          {!isLoadingDetail && !showAdd && !selected && (
             <div className="py-8 text-sm text-gray-300">เลือกแถวในตารางเพื่อดูรายละเอียด</div>
-          ) : (
+          )}
+          {!isLoadingDetail && !showAdd && selected && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <button

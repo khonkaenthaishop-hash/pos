@@ -224,6 +224,868 @@ function newBill(id?: string): Bill {
   };
 }
 
+// ─── Sub-components (extracted to reduce function size) ────────
+
+function OpeningCashModal({
+  openingInput,
+  setOpeningInput,
+  isSettingOpening,
+  onSubmit,
+}: {
+  openingInput: string;
+  setOpeningInput: (v: string) => void;
+  isSettingOpening: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Banknote size={20} className="text-orange-500" />
+          <h2 className="text-lg font-bold">ตั้งเงินเปิดแคชเชียร์</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          กรอกยอดเงินเริ่มต้นในลิ้นชักก่อนเปิดขาย
+        </p>
+        <input
+          type="number"
+          autoFocus
+          value={openingInput}
+          onChange={(e) => setOpeningInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+          placeholder="เช่น 500"
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-bold text-center outline-none focus:border-orange-400 mb-4"
+        />
+        <div className="flex gap-2 flex-wrap mb-4">
+          {[500, 1000, 2000, 5000].map((v) => (
+            <button
+              key={v}
+              onClick={() => setOpeningInput(String(v))}
+              className="px-3 py-2 border border-gray-200 rounded-xl text-sm hover:bg-orange-50 hover:border-orange-300"
+            >
+              {v.toLocaleString()}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onSubmit}
+          disabled={isSettingOpening}
+          className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {isSettingOpening ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <CheckCircle size={16} />
+          )}
+          ยืนยัน
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ManagerApprovalModal({
+  discountLimit,
+  isVerifyingPass,
+  onConfirm,
+  onCancel,
+}: {
+  discountLimit: number;
+  isVerifyingPass: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl">
+        <div className="flex items-center gap-2 mb-3">
+          <Lock size={18} className="text-gray-500" />
+          <h3 className="font-bold">ส่วนลดเกิน {discountLimit} ฿</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          ต้องได้รับการอนุมัติจากผู้จัดการหรือเจ้าของร้าน
+          <br />
+          กรุณาให้ผู้จัดการ{" "}
+          <span className="font-semibold">
+            ล็อกอินบัญชีตัวเองและกดยืนยัน
+          </span>
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={onConfirm}
+            disabled={isVerifyingPass}
+            className="flex-1 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+          >
+            {isVerifyingPass ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <CheckCircle size={14} />
+            )}
+            ยืนยัน (ด้วยสิทธิ์ปัจจุบัน)
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm"
+          >
+            ยกเลิก
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReturnModal({
+  returnOrderId,
+  setReturnOrderId,
+  returnReason,
+  setReturnReason,
+  returnOrder,
+  isFetchingReturn,
+  isReturning,
+  onFetch,
+  onReturn,
+  onClose,
+}: {
+  returnOrderId: string;
+  setReturnOrderId: (v: string) => void;
+  returnReason: string;
+  setReturnReason: (v: string) => void;
+  returnOrder: CreatedOrder | null;
+  isFetchingReturn: boolean;
+  isReturning: boolean;
+  onFetch: () => void;
+  onReturn: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <RotateCcw size={16} className="text-red-500" /> คืนสินค้า /
+            Refund
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex gap-2">
+            <input
+              value={returnOrderId}
+              onChange={(e) => setReturnOrderId(e.target.value)}
+              placeholder="เลขออร์เดอร์ หรือ Order ID"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+            />
+            <button
+              onClick={onFetch}
+              disabled={isFetchingReturn}
+              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm disabled:opacity-50"
+            >
+              {isFetchingReturn ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Search size={14} />
+              )}
+            </button>
+          </div>
+          {returnOrder && (
+            <div className="border border-gray-200 rounded-xl p-3 space-y-2">
+              <div className="text-sm font-semibold">
+                #
+                {(returnOrder as Record<string, unknown>).orderNo as string}
+              </div>
+              <div className="space-y-1">
+                {(
+                  ((returnOrder as Record<string, unknown>).items as {
+                    productNameTh: string;
+                    quantity: number;
+                    unitPrice: number;
+                  }[]) || []
+                ).map((item, i) => (
+                  <div
+                    key={`return-item-${i}`}
+                    className="flex justify-between text-xs text-gray-600"
+                  >
+                    <span>
+                      {item.productNameTh} × {item.quantity}
+                    </span>
+                    <span>
+                      {(item.unitPrice * item.quantity).toLocaleString()} ฿
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <input
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="เหตุผลในการคืน *"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+              </div>
+              <button
+                onClick={onReturn}
+                disabled={isReturning}
+                className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isReturning ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RotateCcw size={14} />
+                )}
+                ยืนยันคืนสินค้า (คืน stock อัตโนมัติ)
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReportModal({
+  isLoadingReport,
+  reportData,
+  cashierSession,
+  closingInput,
+  setClosingInput,
+  isClosingSession,
+  onLoadReport,
+  onCloseSession,
+  onClose,
+}: {
+  isLoadingReport: boolean;
+  reportData: Record<string, unknown> | null;
+  cashierSession: CashierSession | null | false;
+  closingInput: string;
+  setClosingInput: (v: string) => void;
+  isClosingSession: boolean;
+  onLoadReport: (type: "x" | "z") => void;
+  onCloseSession: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold">
+            <BarChart2 size={16} className="text-orange-500" />{" "}
+            รายงานประจำวัน
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <div className="p-4">
+          {isLoadingReport ? (
+            <div className="h-32 flex items-center justify-center">
+              <Loader2 size={18} className="animate-spin text-gray-400" />
+            </div>
+          ) : reportData ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <div className="text-xs text-gray-500">เปิดแคชเชียร์</div>
+                  <div className="font-bold text-lg">
+                    {Number(reportData.openingCash || 0).toLocaleString()} ฿
+                  </div>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-3 text-center">
+                  <div className="text-xs text-gray-500">ยอดรวม</div>
+                  <div className="font-bold text-lg text-orange-600">
+                    {Number(reportData.totalRevenue || 0).toLocaleString()}{" "}
+                    ฿
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                แยกตามวิธีชำระ
+              </div>
+              {Object.entries(
+                (reportData.byMethod as Record<string, number>) || {},
+              ).map(([k, v]) => (
+                <div
+                  key={k}
+                  className="flex justify-between text-sm border-b border-gray-100 pb-1"
+                >
+                  <span className="text-gray-600 capitalize">
+                    {paymentMethodLabel(k)}
+                  </span>
+                  <span className="font-semibold">
+                    {Number(v).toLocaleString()} ฿
+                  </span>
+                </div>
+              ))}
+              <div className="flex justify-between text-sm font-bold pt-1">
+                <span>บิลทั้งหมด</span>
+                <span>{Number(reportData.totalOrders || 0)} บิล</span>
+              </div>
+            </div>
+          ) : null}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => onLoadReport("x")}
+              className="flex-1 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50"
+            >
+              X-Report
+            </button>
+            <button
+              onClick={() => onLoadReport("z")}
+              className="flex-1 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold"
+            >
+              Z-Report
+            </button>
+          </div>
+
+          {/* Close Cash (end of day) */}
+          {cashierSession && cashierSession.status === "open" && (
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                ปิดแคชเชียร์ (สิ้นวัน)
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={closingInput}
+                  onChange={(e) => setClosingInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && onCloseSession()
+                  }
+                  placeholder="ยอดเงินในลิ้นชัก"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
+                />
+                <button
+                  onClick={onCloseSession}
+                  disabled={isClosingSession}
+                  className="px-4 py-2 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
+                >
+                  {isClosingSession ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Lock size={14} />
+                  )}
+                  ปิดวัน
+                </button>
+              </div>
+            </div>
+          )}
+          {cashierSession && cashierSession.status === "closed" && (
+            <div className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-400">
+              🔒 ปิดแคชเชียร์แล้ว — ยอดปิด{" "}
+              {Number(cashierSession.closingAmount ?? 0).toLocaleString()} ฿
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeldBillsPanel({
+  heldBills,
+  onResume,
+  onDiscard,
+  onClose,
+}: {
+  heldBills: HeldSummary[];
+  onResume: (id: string) => void;
+  onDiscard: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[80vh]">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <PauseCircle size={16} className="text-amber-500" />
+            <span className="font-bold text-sm">บิลที่พักไว้</span>
+            {heldBills.length > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                {heldBills.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto flex-1 p-2 space-y-1.5">
+          {heldBills.length === 0 ? (
+            <div className="py-12 text-center text-sm text-gray-400 flex flex-col items-center gap-2">
+              <PauseCircle size={28} className="text-gray-200" />
+              ไม่มีบิลที่พักไว้
+            </div>
+          ) : (
+            heldBills.map((b) => (
+              <div
+                key={b.id}
+                className="border border-gray-200 rounded-2xl overflow-hidden hover:border-amber-300 transition group"
+              >
+                {/* Resume button area */}
+                <button
+                  onClick={() => onResume(b.id)}
+                  className="w-full text-left px-3 pt-3 pb-2 hover:bg-amber-50 transition"
+                >
+                  <div className="flex items-start gap-2">
+                    <PlayCircle
+                      size={15}
+                      className="text-amber-500 shrink-0 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-gray-900 truncate">
+                        {b.label}
+                      </div>
+                      {b.customerName && (
+                        <div className="text-xs text-blue-500 truncate mt-0.5">
+                          {b.customerName}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                        <span>
+                          {b.totalQty} ชิ้น ({b.itemCount} รายการ)
+                        </span>
+                        {b.discount > 0 && (
+                          <span className="text-red-400">
+                            ลด {b.discount.toLocaleString()} ฿
+                          </span>
+                        )}
+                        <span className="ml-auto">
+                          {new Date(b.createdAt).toLocaleTimeString(
+                            "th-TH",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+                {/* Discard button */}
+                <div className="px-3 pb-2 flex justify-end">
+                  <button
+                    onClick={() => onDiscard(b.id)}
+                    className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50"
+                  >
+                    <X size={11} /> ลบบิล
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer hint */}
+        {heldBills.length > 0 && (
+          <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400 text-center shrink-0">
+            แตะเพื่อเรียกบิลคืน · บิลที่พักจะถูกบันทึกในฐานข้อมูล
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PosReceiptModal({
+  receiptOrder,
+  receiptText,
+  receiptSettings,
+  includeVat,
+  paymentMethod,
+  receiptHeaderLines,
+  receiptFooterLines,
+  printerSettings,
+  cashierName,
+  onClose,
+}: {
+  receiptOrder: CreatedOrder;
+  receiptText: string;
+  receiptSettings: ReceiptSettings | null | undefined;
+  includeVat: boolean;
+  paymentMethod: PaymentMethodType;
+  receiptHeaderLines: string[];
+  receiptFooterLines: string[];
+  printerSettings: { printerIp?: string; printerPort?: number; codePage?: number; paperWidth?: 55 | 72; printMode?: string } | null | undefined;
+  cashierName: string;
+  onClose: () => void;
+}) {
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrint = async () => {
+    const isCash =
+      receiptOrder.paymentMethod === "cash" ||
+      paymentMethod === "cash";
+    setPrinting(true);
+    try {
+      await printReceipt(
+        {
+          headerLines: receiptHeaderLines,
+          receiptNo: String(receiptOrder.orderNo || "—"),
+          issuedAt: receiptOrder.paidAt
+            ? new Date(String(receiptOrder.paidAt))
+            : new Date(),
+          cashierName,
+          items: (receiptOrder.items || []).map((i) => ({
+            name: String(
+              i.productNameEn || i.productNameTh || "",
+            ),
+            qty: Number(i.quantity || 0),
+            price: Number(i.unitPrice || 0),
+          })),
+          discount: Number(receiptOrder.discount) || 0,
+          vatRate: includeVat ? 0.07 : 0,
+          total: Number(receiptOrder.total || 0),
+          paymentMethodLabel: paymentMethodLabel(
+            String(receiptOrder.paymentMethod || ""),
+          ),
+          cash: receiptOrder.cashReceived,
+          change: receiptOrder.change,
+          footerLines: receiptFooterLines,
+          codePage: printerSettings?.codePage,
+          paperWidthMm: printerSettings?.paperWidth,
+          openDrawer: isCash,
+        },
+        printerSettings?.printMode === "RAWBT"
+          ? undefined
+          : {
+              host:
+                printerSettings?.printerIp || "192.168.1.121",
+              port: printerSettings?.printerPort || 9100,
+            },
+      );
+      toast.success("พิมพ์ใบเสร็จสำเร็จ");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "พิมพ์ไม่สำเร็จ",
+      );
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="font-bold">ใบเสร็จ #{receiptOrder.orderNo}</div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="max-h-[65vh] overflow-y-auto bg-gray-50">
+          <ReceiptPrint
+            text={receiptText}
+            widthMm={receiptSettings?.receiptWidth ?? 55}
+            qrImageUrl={STORE_INFO.qrImageUrl}
+          />
+        </div>
+        <div className="p-4 border-t border-gray-100 flex items-center justify-end gap-2">
+          <button
+            disabled={printing}
+            onClick={handlePrint}
+            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
+          >
+            {printing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : null}
+            พิมพ์
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductGrid({
+  products,
+  isLoadingProducts,
+  onAddToCart,
+}: {
+  products: Product[];
+  isLoadingProducts: boolean;
+  onAddToCart: (p: Product) => void;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 flex-1 overflow-y-auto min-h-50">
+      {isLoadingProducts ? (
+        <div className="h-48 flex items-center justify-center text-gray-400">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="ml-2 text-sm">กำลังโหลด...</span>
+        </div>
+      ) : products.length === 0 ? (
+        <div className="h-48 flex items-center justify-center text-gray-300 text-sm">
+          ไม่พบสินค้า
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          {products.map((p) => {
+            const isOutOfStock =
+              p.currentStock != null && p.currentStock <= 0;
+            const isLow =
+              !isOutOfStock &&
+              p.currentStock != null &&
+              p.currentStock <= (p.minStock ?? 0);
+            if (isOutOfStock) return null;
+            return (
+              <button
+                key={p.id}
+                onClick={() => onAddToCart(p)}
+                className="group text-left border border-gray-200 rounded-2xl overflow-hidden hover:border-orange-300 hover:shadow-sm transition bg-white relative"
+              >
+                {isLow && (
+                  <span className="absolute top-2 left-2 z-10 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                    <AlertTriangle size={10} /> ต่ำ
+                  </span>
+                )}
+                <div className="aspect-4/3 bg-gray-50 overflow-hidden">
+                  <div className="w-full h-full relative">
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-200">
+                      <Receipt size={28} />
+                    </div>
+                    {resolveAssetUrl(p.imageUrl) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={resolveAssetUrl(p.imageUrl) as string}
+                        alt={p.nameTh}
+                        className="relative z-10 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display =
+                            "none";
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+                <div className="p-2.5">
+                  <div className="font-semibold text-gray-900 text-sm line-clamp-2">
+                    {p.nameTh}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <div className="text-orange-600 font-bold text-sm">
+                      {Number(p.retailPrice || 0).toLocaleString()} ฿
+                    </div>
+                    <div className="w-7 h-7 rounded-xl bg-orange-500 text-white flex items-center justify-center group-hover:bg-orange-600 transition">
+                      <Plus size={14} />
+                    </div>
+                  </div>
+                  {p.currentStock != null && (
+                    <div
+                      className={`text-[11px] mt-0.5 ${isLow ? "text-amber-500 font-semibold" : "text-gray-400"}`}
+                    >
+                      คงเหลือ {Number(p.currentStock)}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CartItemsList({
+  cart,
+  onRemove,
+  onUpdateQty,
+  onSetDiscount,
+}: {
+  cart: CartItem[];
+  onRemove: (id: string) => void;
+  onUpdateQty: (id: string, delta: number) => void;
+  onSetDiscount: (id: string, val: number) => void;
+}) {
+  if (cart.length === 0) {
+    return (
+      <div className="h-32 flex items-center justify-center text-gray-300 text-sm">
+        ยังไม่มีสินค้า
+      </div>
+    );
+  }
+  return (
+    <>
+      {cart.map((item) => (
+        <div
+          key={item.id}
+          className="border border-gray-200 rounded-2xl p-3"
+        >
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-gray-900 text-sm truncate">
+                {item.nameTh}
+              </div>
+              <div className="text-xs text-gray-400 mt-0.5">
+                {Number(item.retailPrice).toLocaleString()} ฿/ชิ้น
+                {item.packQty > 0 && item.ratio > 1 && (
+                  <span className="ml-2 text-orange-500">
+                    • แพ็ค x{item.packQty} (
+                    {money(
+                      item.packPrice ?? item.retailPrice * item.ratio,
+                    )}{" "}
+                    ฿/แพ็ค)
+                  </span>
+                )}
+                {item.promoQty &&
+                  item.promoPrice &&
+                  item.promoQty > 1 &&
+                  item.promoPrice > 0 && (
+                    <span className="ml-2 text-emerald-600">
+                      • โปรฯ {item.promoQty} ชิ้น=
+                      {money(item.promoPrice)} ฿
+                    </span>
+                  )}
+                {item.pickLocation && (
+                  <span className="ml-2 font-mono text-blue-400">
+                    • {item.pickLocation}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => onRemove(item.id)}
+              className="text-gray-300 hover:text-red-500"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onUpdateQty(item.id, -1)}
+                className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+              >
+                <Minus size={12} />
+              </button>
+              <span className="w-8 text-center font-bold text-sm">
+                {item.qty}
+              </span>
+              <button
+                onClick={() => onUpdateQty(item.id, 1)}
+                className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400">ลด</span>
+              <input
+                type="number"
+                min={0}
+                value={item.itemDiscount || ""}
+                onChange={(e) =>
+                  onSetDiscount(item.id, Math.max(0, Number(e.target.value)))
+                }
+                onBlur={(e) => {
+                  if (Number(e.target.value) < 0) onSetDiscount(item.id, 0);
+                }}
+                placeholder="0"
+                className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-orange-400"
+              />
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full ${item.discountMode === "auto" ? "bg-gray-100 text-gray-500" : "bg-amber-50 text-amber-700"}`}
+              >
+                {item.discountMode === "auto" ? "AUTO" : "MANUAL"}
+              </span>
+            </div>
+            <div className="font-bold text-gray-900 text-sm tabular-nums">
+              {(
+                item.retailPrice * item.qty -
+                item.itemDiscount
+              ).toLocaleString()}{" "}
+              ฿
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function CartSummaryFooter({
+  subtotal,
+  discountInput,
+  cashierSession,
+  cart,
+  onDiscountChange,
+  onCheckout,
+}: {
+  subtotal: number;
+  discountInput: number;
+  cashierSession: CashierSession | null | false;
+  cart: CartItem[];
+  onDiscountChange: (v: number) => void;
+  onCheckout: () => void;
+}) {
+  const isClosed = cashierSession && (cashierSession as CashierSession).status === "closed";
+  return (
+    <div className="shrink-0 p-3 border-t border-gray-100 space-y-3">
+      <div className="border border-gray-200 rounded-2xl p-3 space-y-1.5 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500">รวม</span>
+          <span className="tabular-nums">{money(subtotal)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">ส่วนลดรวม</span>
+          <input
+            type="number"
+            min={0}
+            value={discountInput}
+            onChange={(e) =>
+              onDiscountChange(Math.max(0, Number(e.target.value)))
+            }
+            onBlur={(e) => {
+              if (Number(e.target.value) < 0) onDiscountChange(0);
+            }}
+            className="w-24 text-right border border-gray-200 rounded-xl px-2 py-1 text-sm outline-none focus:border-orange-400 tabular-nums"
+          />
+        </div>
+      </div>
+      {isClosed ? (
+        <div className="w-full py-3 bg-gray-200 text-gray-400 font-bold rounded-2xl text-sm text-center">
+          🔒 ปิดแคชเชียร์แล้ว — ไม่รับชำระเงิน
+        </div>
+      ) : (
+        <button
+          onClick={onCheckout}
+          disabled={cart.length === 0}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white font-extrabold rounded-2xl text-sm transition"
+        >
+          <CheckCircle size={16} />
+          ยืนยัน
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────
 export default function PosPage() {
   const role: string = "owner";
@@ -279,7 +1141,6 @@ export default function PosPage() {
   // ─── Receipt ──────────────────────────────────────────────────
   const [receiptOrder, setReceiptOrder] = useState<CreatedOrder | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
 
   const { data: receiptSettings } = useSettings<ReceiptSettings>("receipt");
   const { data: printerSettings } = useSettings<{
@@ -296,7 +1157,7 @@ export default function PosPage() {
 
   const receiptFooterLines = useMemo(() => {
     const footerLines = Array.isArray(receiptSettings?.footerLines)
-      ? receiptSettings!.footerLines
+      ? (receiptSettings?.footerLines ?? [])
           .map((v) => String(v ?? "").trim())
           .filter(Boolean)
       : [];
@@ -1053,504 +1914,87 @@ export default function PosPage() {
     <div className="h-full bg-gray-50">
       {/* Opening cash modal */}
       {showOpeningModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl border border-gray-200">
-            <div className="flex items-center gap-2 mb-4">
-              <Banknote size={20} className="text-orange-500" />
-              <h2 className="text-lg font-bold">ตั้งเงินเปิดแคชเชียร์</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">
-              กรอกยอดเงินเริ่มต้นในลิ้นชักก่อนเปิดขาย
-            </p>
-            <input
-              type="number"
-              autoFocus
-              value={openingInput}
-              onChange={(e) => setOpeningInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSetOpening()}
-              placeholder="เช่น 500"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-bold text-center outline-none focus:border-orange-400 mb-4"
-            />
-            <div className="flex gap-2 flex-wrap mb-4">
-              {[500, 1000, 2000, 5000].map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setOpeningInput(String(v))}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm hover:bg-orange-50 hover:border-orange-300"
-                >
-                  {v.toLocaleString()}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={handleSetOpening}
-              disabled={isSettingOpening}
-              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSettingOpening ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <CheckCircle size={16} />
-              )}
-              ยืนยัน
-            </button>
-          </div>
-        </div>
+        <OpeningCashModal
+          openingInput={openingInput}
+          setOpeningInput={setOpeningInput}
+          isSettingOpening={isSettingOpening}
+          onSubmit={handleSetOpening}
+        />
       )}
 
-      {/* Manager approval modal — role verified server-side, no password stored in browser */}
+      {/* Manager approval modal */}
       {showPassModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl">
-            <div className="flex items-center gap-2 mb-3">
-              <Lock size={18} className="text-gray-500" />
-              <h3 className="font-bold">ส่วนลดเกิน {DISCOUNT_LIMIT} ฿</h3>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">
-              ต้องได้รับการอนุมัติจากผู้จัดการหรือเจ้าของร้าน
-              <br />
-              กรุณาให้ผู้จัดการ{" "}
-              <span className="font-semibold">
-                ล็อกอินบัญชีตัวเองและกดยืนยัน
-              </span>
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handlePassSubmit}
-                disabled={isVerifyingPass}
-                className="flex-1 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                {isVerifyingPass ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={14} />
-                )}
-                ยืนยัน (ด้วยสิทธิ์ปัจจุบัน)
-              </button>
-              <button
-                onClick={() => {
-                  setShowPassModal(false);
-                  setPendingDiscount(null);
-                }}
-                className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm"
-              >
-                ยกเลิก
-              </button>
-            </div>
-          </div>
-        </div>
+        <ManagerApprovalModal
+          discountLimit={DISCOUNT_LIMIT}
+          isVerifyingPass={isVerifyingPass}
+          onConfirm={handlePassSubmit}
+          onCancel={() => {
+            setShowPassModal(false);
+            setPendingDiscount(null);
+          }}
+        />
       )}
 
       {/* Return modal */}
       {showReturnModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold">
-                <RotateCcw size={16} className="text-red-500" /> คืนสินค้า /
-                Refund
-              </div>
-              <button
-                onClick={() => {
-                  setShowReturnModal(false);
-                  setReturnOrder(null);
-                  setReturnOrderId("");
-                  setReturnReason("");
-                }}
-                className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex gap-2">
-                <input
-                  value={returnOrderId}
-                  onChange={(e) => setReturnOrderId(e.target.value)}
-                  placeholder="เลขออร์เดอร์ หรือ Order ID"
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                />
-                <button
-                  onClick={fetchReturnOrder}
-                  disabled={isFetchingReturn}
-                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm disabled:opacity-50"
-                >
-                  {isFetchingReturn ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Search size={14} />
-                  )}
-                </button>
-              </div>
-              {returnOrder && (
-                <div className="border border-gray-200 rounded-xl p-3 space-y-2">
-                  <div className="text-sm font-semibold">
-                    #
-                    {(returnOrder as Record<string, unknown>).orderNo as string}
-                  </div>
-                  <div className="space-y-1">
-                    {(
-                      ((returnOrder as Record<string, unknown>).items as {
-                        productNameTh: string;
-                        quantity: number;
-                        unitPrice: number;
-                      }[]) || []
-                    ).map((item, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between text-xs text-gray-600"
-                      >
-                        <span>
-                          {item.productNameTh} × {item.quantity}
-                        </span>
-                        <span>
-                          {(item.unitPrice * item.quantity).toLocaleString()} ฿
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="pt-2 border-t border-gray-100">
-                    <input
-                      value={returnReason}
-                      onChange={(e) => setReturnReason(e.target.value)}
-                      placeholder="เหตุผลในการคืน *"
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                    />
-                  </div>
-                  <button
-                    onClick={handleReturn}
-                    disabled={isReturning}
-                    className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isReturning ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <RotateCcw size={14} />
-                    )}
-                    ยืนยันคืนสินค้า (คืน stock อัตโนมัติ)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ReturnModal
+          returnOrderId={returnOrderId}
+          setReturnOrderId={setReturnOrderId}
+          returnReason={returnReason}
+          setReturnReason={setReturnReason}
+          returnOrder={returnOrder}
+          isFetchingReturn={isFetchingReturn}
+          isReturning={isReturning}
+          onFetch={fetchReturnOrder}
+          onReturn={handleReturn}
+          onClose={() => {
+            setShowReturnModal(false);
+            setReturnOrder(null);
+            setReturnOrderId("");
+            setReturnReason("");
+          }}
+        />
       )}
 
       {/* X/Z Report modal */}
       {showReportModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold">
-                <BarChart2 size={16} className="text-orange-500" />{" "}
-                รายงานประจำวัน
-              </div>
-              <button
-                onClick={() => setShowReportModal(false)}
-                className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="p-4">
-              {isLoadingReport ? (
-                <div className="h-32 flex items-center justify-center">
-                  <Loader2 size={18} className="animate-spin text-gray-400" />
-                </div>
-              ) : reportData ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 rounded-xl p-3 text-center">
-                      <div className="text-xs text-gray-500">เปิดแคชเชียร์</div>
-                      <div className="font-bold text-lg">
-                        {Number(reportData.openingCash || 0).toLocaleString()} ฿
-                      </div>
-                    </div>
-                    <div className="bg-orange-50 rounded-xl p-3 text-center">
-                      <div className="text-xs text-gray-500">ยอดรวม</div>
-                      <div className="font-bold text-lg text-orange-600">
-                        {Number(reportData.totalRevenue || 0).toLocaleString()}{" "}
-                        ฿
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    แยกตามวิธีชำระ
-                  </div>
-                  {Object.entries(
-                    (reportData.byMethod as Record<string, number>) || {},
-                  ).map(([k, v]) => (
-                    <div
-                      key={k}
-                      className="flex justify-between text-sm border-b border-gray-100 pb-1"
-                    >
-                      <span className="text-gray-600 capitalize">
-                        {paymentMethodLabel(k)}
-                      </span>
-                      <span className="font-semibold">
-                        {Number(v).toLocaleString()} ฿
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-sm font-bold pt-1">
-                    <span>บิลทั้งหมด</span>
-                    <span>{Number(reportData.totalOrders || 0)} บิล</span>
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => loadReport("x")}
-                  className="flex-1 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50"
-                >
-                  X-Report
-                </button>
-                <button
-                  onClick={() => loadReport("z")}
-                  className="flex-1 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold"
-                >
-                  Z-Report
-                </button>
-              </div>
-
-              {/* Close Cash (end of day) */}
-              {cashierSession && cashierSession.status === "open" && (
-                <div className="mt-4 border-t border-gray-100 pt-4">
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    ปิดแคชเชียร์ (สิ้นวัน)
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={closingInput}
-                      onChange={(e) => setClosingInput(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleCloseSession()
-                      }
-                      placeholder="ยอดเงินในลิ้นชัก"
-                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-orange-400"
-                    />
-                    <button
-                      onClick={handleCloseSession}
-                      disabled={isClosingSession}
-                      className="px-4 py-2 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
-                    >
-                      {isClosingSession ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Lock size={14} />
-                      )}
-                      ปิดวัน
-                    </button>
-                  </div>
-                </div>
-              )}
-              {cashierSession && cashierSession.status === "closed" && (
-                <div className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-400">
-                  🔒 ปิดแคชเชียร์แล้ว — ยอดปิด{" "}
-                  {Number(cashierSession.closingAmount ?? 0).toLocaleString()} ฿
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ReportModal
+          isLoadingReport={isLoadingReport}
+          reportData={reportData}
+          cashierSession={cashierSession}
+          closingInput={closingInput}
+          setClosingInput={setClosingInput}
+          isClosingSession={isClosingSession}
+          onLoadReport={loadReport}
+          onCloseSession={handleCloseSession}
+          onClose={() => setShowReportModal(false)}
+        />
       )}
 
       {/* Held bills panel */}
       {showHeldPanel && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowHeldPanel(false);
-          }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[80vh]">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <PauseCircle size={16} className="text-amber-500" />
-                <span className="font-bold text-sm">บิลที่พักไว้</span>
-                {heldBills.length > 0 && (
-                  <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                    {heldBills.length}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setShowHeldPanel(false)}
-                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* List */}
-            <div className="overflow-y-auto flex-1 p-2 space-y-1.5">
-              {heldBills.length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400 flex flex-col items-center gap-2">
-                  <PauseCircle size={28} className="text-gray-200" />
-                  ไม่มีบิลที่พักไว้
-                </div>
-              ) : (
-                heldBills.map((b) => (
-                  <div
-                    key={b.id}
-                    className="border border-gray-200 rounded-2xl overflow-hidden hover:border-amber-300 transition group"
-                  >
-                    {/* Resume button area */}
-                    <button
-                      onClick={() => resumeHeldBill(b.id)}
-                      className="w-full text-left px-3 pt-3 pb-2 hover:bg-amber-50 transition"
-                    >
-                      <div className="flex items-start gap-2">
-                        <PlayCircle
-                          size={15}
-                          className="text-amber-500 shrink-0 mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 truncate">
-                            {b.label}
-                          </div>
-                          {b.customerName && (
-                            <div className="text-xs text-blue-500 truncate mt-0.5">
-                              {b.customerName}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                            <span>
-                              {b.totalQty} ชิ้น ({b.itemCount} รายการ)
-                            </span>
-                            {b.discount > 0 && (
-                              <span className="text-red-400">
-                                ลด {b.discount.toLocaleString()} ฿
-                              </span>
-                            )}
-                            <span className="ml-auto">
-                              {new Date(b.createdAt).toLocaleTimeString(
-                                "th-TH",
-                                { hour: "2-digit", minute: "2-digit" },
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                    {/* Discard button */}
-                    <div className="px-3 pb-2 flex justify-end">
-                      <button
-                        onClick={() => discardHeldBill(b.id)}
-                        className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50"
-                      >
-                        <X size={11} /> ลบบิล
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Footer hint */}
-            {heldBills.length > 0 && (
-              <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400 text-center shrink-0">
-                แตะเพื่อเรียกบิลคืน · บิลที่พักจะถูกบันทึกในฐานข้อมูล
-              </div>
-            )}
-          </div>
-        </div>
+        <HeldBillsPanel
+          heldBills={heldBills}
+          onResume={resumeHeldBill}
+          onDiscard={discardHeldBill}
+          onClose={() => setShowHeldPanel(false)}
+        />
       )}
 
       {/* Receipt modal */}
       {isReceiptOpen && receiptOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <div className="font-bold">ใบเสร็จ #{receiptOrder.orderNo}</div>
-              <button
-                onClick={() => setIsReceiptOpen(false)}
-                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="max-h-[65vh] overflow-y-auto bg-gray-50">
-              <ReceiptPrint
-                text={receiptText}
-                widthMm={receiptSettings?.receiptWidth ?? 55}
-                qrImageUrl={STORE_INFO.qrImageUrl}
-              />
-            </div>
-            <div className="p-4 border-t border-gray-100 flex items-center justify-end gap-2">
-              <button
-                disabled={isPrinting}
-                onClick={async () => {
-                  if (!receiptOrder) return;
-                  const isCash =
-                    receiptOrder.paymentMethod === "cash" ||
-                    paymentMethod === "cash";
-                  setIsPrinting(true);
-                  try {
-                    await printReceipt(
-                      {
-                        headerLines: receiptHeaderLines,
-                        receiptNo: String(receiptOrder.orderNo || "—"),
-                        issuedAt: receiptOrder.paidAt
-                          ? new Date(String(receiptOrder.paidAt))
-                          : new Date(),
-                        cashierName,
-                        items: (receiptOrder.items || []).map((i) => ({
-                          name: String(
-                            i.productNameEn || i.productNameTh || "",
-                          ),
-                          qty: Number(i.quantity || 0),
-                          price: Number(i.unitPrice || 0),
-                        })),
-                        discount: Number(receiptOrder.discount) || 0,
-                        vatRate: includeVat ? 0.07 : 0,
-                        total: Number(receiptOrder.total || 0),
-                        paymentMethodLabel: paymentMethodLabel(
-                          String(receiptOrder.paymentMethod || ""),
-                        ),
-                        cash: receiptOrder.cashReceived,
-                        change: receiptOrder.change,
-                        footerLines: receiptFooterLines,
-                        codePage: printerSettings?.codePage,
-                        paperWidthMm: printerSettings?.paperWidth,
-                        openDrawer: isCash,
-                      },
-                      printerSettings?.printMode === "RAWBT"
-                        ? undefined
-                        : {
-                            host:
-                              printerSettings?.printerIp || "192.168.1.121",
-                            port: printerSettings?.printerPort || 9100,
-                          },
-                    );
-                    toast.success("พิมพ์ใบเสร็จสำเร็จ");
-                  } catch (err) {
-                    toast.error(
-                      err instanceof Error ? err.message : "พิมพ์ไม่สำเร็จ",
-                    );
-                  } finally {
-                    setIsPrinting(false);
-                  }
-                }}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
-              >
-                {isPrinting ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : null}
-                พิมพ์
-              </button>
-              <button
-                onClick={() => setIsReceiptOpen(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
-        </div>
+        <PosReceiptModal
+          receiptOrder={receiptOrder}
+          receiptText={receiptText}
+          receiptSettings={receiptSettings}
+          includeVat={includeVat}
+          paymentMethod={paymentMethod}
+          receiptHeaderLines={receiptHeaderLines}
+          receiptFooterLines={receiptFooterLines}
+          printerSettings={printerSettings}
+          cashierName={cashierName}
+          onClose={() => setIsReceiptOpen(false)}
+        />
       )}
 
       {/* Mobile cart overlay */}
@@ -1684,82 +2128,11 @@ export default function PosPage() {
           </div>
 
           {/* Products grid */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex-1 overflow-y-auto min-h-50">
-            {isLoadingProducts ? (
-              <div className="h-48 flex items-center justify-center text-gray-400">
-                <Loader2 size={18} className="animate-spin" />
-                <span className="ml-2 text-sm">กำลังโหลด...</span>
-              </div>
-            ) : products.length === 0 ? (
-              <div className="h-48 flex items-center justify-center text-gray-300 text-sm">
-                ไม่พบสินค้า
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                {products.map((p) => {
-                  const isOutOfStock =
-                    p.currentStock != null && p.currentStock <= 0;
-                  const isLow =
-                    !isOutOfStock &&
-                    p.currentStock != null &&
-                    p.currentStock <= (p.minStock ?? 0);
-                  if (isOutOfStock) return null;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => addToCart(p)}
-                      className="group text-left border border-gray-200 rounded-2xl overflow-hidden hover:border-orange-300 hover:shadow-sm transition bg-white relative"
-                    >
-                      {isLow && (
-                        <span className="absolute top-2 left-2 z-10 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                          <AlertTriangle size={10} /> ต่ำ
-                        </span>
-                      )}
-	                      <div className="aspect-4/3 bg-gray-50 overflow-hidden">
-	                        <div className="w-full h-full relative">
-	                          <div className="absolute inset-0 flex items-center justify-center text-gray-200">
-	                            <Receipt size={28} />
-	                          </div>
-	                          {resolveAssetUrl(p.imageUrl) ? (
-	                            // eslint-disable-next-line @next/next/no-img-element
-	                            <img
-	                              src={resolveAssetUrl(p.imageUrl)!}
-	                              alt={p.nameTh}
-	                              className="relative z-10 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
-	                              onError={(e) => {
-	                                (e.currentTarget as HTMLImageElement).style.display =
-	                                  "none";
-	                              }}
-	                            />
-	                          ) : null}
-	                        </div>
-	                      </div>
-                      <div className="p-2.5">
-                        <div className="font-semibold text-gray-900 text-sm line-clamp-2">
-                          {p.nameTh}
-                        </div>
-                        <div className="mt-1 flex items-center justify-between">
-                          <div className="text-orange-600 font-bold text-sm">
-                            {Number(p.retailPrice || 0).toLocaleString()} ฿
-                          </div>
-                          <div className="w-7 h-7 rounded-xl bg-orange-500 text-white flex items-center justify-center group-hover:bg-orange-600 transition">
-                            <Plus size={14} />
-                          </div>
-                        </div>
-                        {p.currentStock != null && (
-                          <div
-                            className={`text-[11px] mt-0.5 ${isLow ? "text-amber-500 font-semibold" : "text-gray-400"}`}
-                          >
-                            คงเหลือ {Number(p.currentStock)}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ProductGrid
+            products={products}
+            isLoadingProducts={isLoadingProducts}
+            onAddToCart={addToCart}
+          />
         </section>
 
         {/* ── Cart ────────────────────────────────────────────────── */}
@@ -1852,162 +2225,33 @@ export default function PosPage() {
 
           {/* Cart items — scrollable, takes remaining space */}
           <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
-            {cart.length === 0 ? (
-              <div className="h-32 flex items-center justify-center text-gray-300 text-sm">
-                ยังไม่มีสินค้า
-              </div>
-            ) : (
-              cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="border border-gray-200 rounded-2xl p-3"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 text-sm truncate">
-                        {item.nameTh}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {Number(item.retailPrice).toLocaleString()} ฿/ชิ้น
-                        {item.packQty > 0 && item.ratio > 1 && (
-                          <span className="ml-2 text-orange-500">
-                            • แพ็ค x{item.packQty} (
-                            {money(
-                              item.packPrice ?? item.retailPrice * item.ratio,
-                            )}{" "}
-                            ฿/แพ็ค)
-                          </span>
-                        )}
-                        {item.promoQty &&
-                          item.promoPrice &&
-                          item.promoQty > 1 &&
-                          item.promoPrice > 0 && (
-                            <span className="ml-2 text-emerald-600">
-                              • โปรฯ {item.promoQty} ชิ้น=
-                              {money(item.promoPrice)} ฿
-                            </span>
-                          )}
-                        {item.pickLocation && (
-                          <span className="ml-2 font-mono text-blue-400">
-                            • {item.pickLocation}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        updateActiveBill((b) => ({
-                          ...b,
-                          cart: b.cart.filter((i) => i.id !== item.id),
-                        }))
-                      }
-                      className="text-gray-300 hover:text-red-500"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => updateQty(item.id, -1)}
-                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="w-8 text-center font-bold text-sm">
-                        {item.qty}
-                      </span>
-                      <button
-                        onClick={() => updateQty(item.id, 1)}
-                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-400">ลด</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={item.itemDiscount || ""}
-                        onChange={(e) =>
-                          setItemDiscount(item.id, Math.max(0, Number(e.target.value)))
-                        }
-                        onBlur={(e) => {
-                          if (Number(e.target.value) < 0) setItemDiscount(item.id, 0);
-                        }}
-                        placeholder="0"
-                        className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-orange-400"
-                      />
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${item.discountMode === "auto" ? "bg-gray-100 text-gray-500" : "bg-amber-50 text-amber-700"}`}
-                      >
-                        {item.discountMode === "auto" ? "AUTO" : "MANUAL"}
-                      </span>
-                    </div>
-                    <div className="font-bold text-gray-900 text-sm tabular-nums">
-                      {(
-                        item.retailPrice * item.qty -
-                        item.itemDiscount
-                      ).toLocaleString()}{" "}
-                      ฿
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
+            <CartItemsList
+              cart={cart}
+              onRemove={(id) =>
+                updateActiveBill((b) => ({
+                  ...b,
+                  cart: b.cart.filter((i) => i.id !== id),
+                }))
+              }
+              onUpdateQty={updateQty}
+              onSetDiscount={setItemDiscount}
+            />
           </div>
 
-          {/* Summary + confirm — fixed at bottom, list scrolls independently */}
-          <div className="shrink-0 p-3 border-t border-gray-100 space-y-3">
-            {/* Summary */}
-            <div className="border border-gray-200 rounded-2xl p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">รวม</span>
-                <span className="tabular-nums">{money(subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">ส่วนลดรวม</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={discountInput}
-                  onChange={(e) =>
-                    updateActiveBill((b) => ({
-                      ...b,
-                      discount: Math.max(0, Number(e.target.value)),
-                    }))
-                  }
-                  onBlur={(e) => {
-                    if (Number(e.target.value) < 0)
-                      updateActiveBill((b) => ({ ...b, discount: 0 }));
-                  }}
-                  className="w-24 text-right border border-gray-200 rounded-xl px-2 py-1 text-sm outline-none focus:border-orange-400 tabular-nums"
-                />
-              </div>
-            </div>
-
-            {/* Confirm button — opens popup (bottom-most) */}
-            {cashierSession &&
-            (cashierSession as CashierSession).status === "closed" ? (
-              <div className="w-full py-3 bg-gray-200 text-gray-400 font-bold rounded-2xl text-sm text-center">
-                🔒 ปิดแคชเชียร์แล้ว — ไม่รับชำระเงิน
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  if (cart.length === 0) return toast.error("ตะกร้าว่าง");
-                  setShowConfirmModal(true);
-                }}
-                disabled={cart.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-950 disabled:opacity-50 text-white font-extrabold rounded-2xl text-sm transition"
-              >
-                <CheckCircle size={16} />
-                ยืนยัน
-              </button>
-            )}
-          </div>
+          {/* Summary + confirm */}
+          <CartSummaryFooter
+            subtotal={subtotal}
+            discountInput={discountInput}
+            cashierSession={cashierSession}
+            cart={cart}
+            onDiscountChange={(v) =>
+              updateActiveBill((b) => ({ ...b, discount: v }))
+            }
+            onCheckout={() => {
+              if (cart.length === 0) { toast.error("ตะกร้าว่าง"); return; }
+              setShowConfirmModal(true);
+            }}
+          />
         </aside>
       </div>
 

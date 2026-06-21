@@ -47,10 +47,9 @@ function attemptSend(buffer: Buffer, host: string, port: number, timeout: number
 
     socket.on('error', (err) => {
       const code = (err as NodeJS.ErrnoException).code;
-      const msg =
-        code === 'ECONNREFUSED' ? `Printer offline — cannot connect to ${host}:${port}` :
-        code === 'ETIMEDOUT'    ? `Printer timeout — ${host}:${port}` :
-        err.message;
+      let msg = err.message;
+      if (code === 'ECONNREFUSED') msg = `Printer offline — cannot connect to ${host}:${port}`;
+      else if (code === 'ETIMEDOUT') msg = `Printer timeout — ${host}:${port}`;
       finish(new Error(msg));
     });
 

@@ -53,9 +53,12 @@ export default function ReceivePage() {
         : String((product as Record<string, unknown>).unit || 'ชิ้น');
       const ratio = Number(scan?.ratio || 1);
       const baseCost = Number((product as Record<string, unknown>).costPrice || 0);
-      const costInput = scan?.kind === 'pack'
-        ? (baseCost > 0 && ratio > 1 ? (baseCost * ratio).toFixed(2) : '')
-        : String((product as Record<string, unknown>).costPrice || '');
+      let costInput: string;
+      if (scan?.kind === 'pack') {
+        costInput = baseCost > 0 && ratio > 1 ? (baseCost * ratio).toFixed(2) : '';
+      } else {
+        costInput = String((product as Record<string, unknown>).costPrice || '');
+      }
       const exists = lines.findIndex(l => l.product.id === product.id && l.unit === unit);
       if (exists >= 0) {
         // เพิ่มจำนวนถ้าสแกนซ้ำ
@@ -212,7 +215,7 @@ export default function ReceivePage() {
               </thead>
               <tbody>
                 {lines.map((line, i) => (
-                  <tr key={i} className="border-t border-gray-50 hover:bg-gray-50/30">
+                  <tr key={`${line.product.id as string}-${line.unit}`} className="border-t border-gray-50 hover:bg-gray-50/30">
                     <td className="px-5 py-3">
                       <div className="font-medium text-gray-800">{line.product.nameTh as string}</div>
                       <div className="text-xs text-gray-400 font-mono">

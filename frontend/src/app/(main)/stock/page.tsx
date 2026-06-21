@@ -205,7 +205,7 @@ export default function StockPage() {
         <select value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
           <option value="">หมวดหมู่</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.nameTh}</option>)}
+          {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
         </select>
         <input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
           placeholder="หน่วย เช่น ชิ้น กล่อง"
@@ -289,7 +289,7 @@ export default function StockPage() {
             <select value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}
               className="appearance-none border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-sm outline-none focus:border-orange-400 bg-white text-gray-600">
               <option value="">ทุกหมวดหมู่</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.nameTh}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
             </select>
             <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -324,21 +324,25 @@ export default function StockPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading && (
                 <tr><td colSpan={isOwner ? 8 : 7} className="text-center py-12">
                   <div className="flex items-center justify-center gap-2 text-gray-400">
                     <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
                   </div>
                 </td></tr>
-              ) : products.length === 0 ? (
+              )}
+              {!isLoading && products.length === 0 && (
                 <tr><td colSpan={isOwner ? 8 : 7} className="text-center py-12 text-gray-300 text-sm">ไม่พบสินค้า</td></tr>
-              ) : products.map((p) => {
+              )}
+              {!isLoading && products.map((p) => {
                 const id = p.id as string;
                 const stock = Number(p.currentStock);
                 const min = Number(p.minStock);
                 const adj = getAdj(id);
                 const isHidden = !p.isActive;
-                const stockColor = stock === 0 ? 'text-red-600 bg-red-50' : stock <= min ? 'text-amber-600 bg-amber-50' : 'text-emerald-700 bg-emerald-50';
+                let stockColor = 'text-emerald-700 bg-emerald-50';
+                if (stock === 0) stockColor = 'text-red-600 bg-red-50';
+                else if (stock <= min) stockColor = 'text-amber-600 bg-amber-50';
 
                 return (
                   <Fragment key={id}>

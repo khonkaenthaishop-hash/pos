@@ -58,7 +58,7 @@ function truncateByWidth(text: string, maxWidth: number): string {
   const out: string[] = [];
   let w = 0;
   for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i]!;
+    const ch = chars[i] ?? '';
     const chW = isZeroWidthMark(ch) ? 0 : 1;
     if (w + chW > maxWidth) break;
     out.push(ch);
@@ -66,8 +66,8 @@ function truncateByWidth(text: string, maxWidth: number): string {
   }
   // include trailing combining marks right after last base char
   let j = out.length;
-  while (j < chars.length && isZeroWidthMark(chars[j]!)) {
-    out.push(chars[j]!);
+  while (j < chars.length && isZeroWidthMark(chars[j] ?? '')) {
+    out.push(chars[j] ?? '');
     j++;
   }
   return out.join('');
@@ -91,7 +91,7 @@ export function padLeft(text: string, width: number): string {
     let w = 0;
     let start = chars.length;
     for (let i = chars.length - 1; i >= 0; i--) {
-      const ch = chars[i]!;
+      const ch = chars[i] ?? '';
       const chW = isZeroWidthMark(ch) ? 0 : 1;
       if (w + chW > width) break;
       start = i;

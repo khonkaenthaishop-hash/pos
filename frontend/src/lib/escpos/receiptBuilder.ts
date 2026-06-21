@@ -60,7 +60,7 @@ const THAI_WIN874 = Buffer.from([
 function encodeThaiWin874(text: string): Buffer {
   const bytes: number[] = [];
   for (const char of text) {
-    const cp = char.codePointAt(0)!;
+    const cp = char.codePointAt(0) ?? 0x3f;
     if (cp < 0x80) bytes.push(cp);
     else if (cp >= 0x0e00 && cp <= 0x0e5f) bytes.push(THAI_WIN874[cp - 0x0e00] || 0x3f);
     else bytes.push(0x3f);

@@ -1,6 +1,6 @@
-export const runtime = 'nodejs';
-
 import { NextRequest, NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
 
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent';

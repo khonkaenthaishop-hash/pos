@@ -37,8 +37,11 @@ function ReceiptPreview({ data }: { data: ReceiptSettings }) {
     <div
       className="bg-white border border-slate-200 rounded-xl p-4 font-mono shadow-inner"
       style={{
-        fontSize:
-          data.fontSize === "sm" ? 10 : data.fontSize === "lg" ? 14 : 12,
+        fontSize: (() => {
+          if (data.fontSize === "sm") return 10;
+          if (data.fontSize === "lg") return 14;
+          return 12;
+        })(),
       }}
     >
       <div className="text-center font-bold mb-1">
@@ -68,11 +71,15 @@ function ReceiptPreview({ data }: { data: ReceiptSettings }) {
         <div className="text-center mt-2 text-xs text-slate-400">[QR CODE]</div>
       )}
       <div className="border-t border-dashed border-slate-300 my-2" />
-      {[data.footerLine1, data.footerLine2, data.footerLine3]
-        .filter(Boolean)
-        .map((l, i) => (
-          <div key={i} className="text-center text-slate-500">
-            {l}
+      {[
+        { key: 'footerLine1', val: data.footerLine1 },
+        { key: 'footerLine2', val: data.footerLine2 },
+        { key: 'footerLine3', val: data.footerLine3 },
+      ]
+        .filter(({ val }) => Boolean(val))
+        .map(({ key, val }) => (
+          <div key={key} className="text-center text-slate-500">
+            {val}
           </div>
         ))}
     </div>
@@ -97,12 +104,11 @@ export default function ReceiptSettingsPage() {
       const normalized = {
         ...DEFAULTS,
         ...data,
-        receiptWidth:
-          data.receiptWidth === 58
-            ? 55
-            : data.receiptWidth === 80
-              ? 72
-              : data.receiptWidth,
+        receiptWidth: (() => {
+          if (data.receiptWidth === 58) return 55;
+          if (data.receiptWidth === 80) return 72;
+          return data.receiptWidth;
+        })(),
       };
       reset(normalized);
     }

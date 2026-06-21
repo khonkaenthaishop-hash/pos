@@ -113,20 +113,22 @@ export default function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading && (
                 <tr><td colSpan={5} className="text-center py-14">
                   <div className="flex items-center justify-center gap-2 text-gray-400">
                     <Loader2 size={18} className="animate-spin" /> กำลังโหลด...
                   </div>
                 </td></tr>
-              ) : logs.length === 0 ? (
+              )}
+              {!isLoading && logs.length === 0 && (
                 <tr><td colSpan={5} className="text-center py-14">
                   <div className="flex flex-col items-center gap-2 text-gray-300">
                     <Shield size={32} strokeWidth={1} />
                     <span className="text-sm">ไม่พบข้อมูล</span>
                   </div>
                 </td></tr>
-              ) : logs.map((log) => {
+              )}
+              {!isLoading && logs.map((log) => {
                 const action = log.action as string;
                 const meta = ACTION_META[action] || { label: action, style: 'bg-gray-100 text-gray-500 border-gray-200' };
                 const user = log.user as Record<string, string> | undefined;

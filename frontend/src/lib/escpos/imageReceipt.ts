@@ -41,10 +41,10 @@ function canvasToEscPosRaster(canvas: HTMLCanvasElement): Uint8Array {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      const r = image.data[i]!;
-      const g = image.data[i + 1]!;
-      const b = image.data[i + 2]!;
-      const a = image.data[i + 3]!;
+      const r = image.data[i] ?? 0;
+      const g = image.data[i + 1] ?? 0;
+      const b = image.data[i + 2] ?? 0;
+      const a = image.data[i + 3] ?? 255;
       const lum = (r * 0.299 + g * 0.587 + b * 0.114) * (a / 255);
       const black = lum < 160;
       if (black) {
@@ -131,7 +131,8 @@ export function buildImageReceiptPayload(
   canvas.height = 400 + receipt.items.length * lineHeight * 2 + reservedExtra;
 
   // reset after resizing
-  const ctx2 = canvas.getContext("2d", { willReadFrequently: true })!;
+  const ctx2 = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx2) throw new Error("Canvas 2D context not available");
   ctx2.textBaseline = "top";
   ctx2.fillStyle = "#fff";
   ctx2.fillRect(0, 0, canvas.width, canvas.height);
@@ -142,8 +143,9 @@ export function buildImageReceiptPayload(
 
   const drawTextLine = (text: string, align: CanvasTextAlign = "left") => {
     ctx2.textAlign = align;
-    const x =
-      align === "center" ? canvas.width / 2 : align === "right" ? canvas.width - padX : padX;
+    let x = padX;
+    if (align === "center") x = canvas.width / 2;
+    else if (align === "right") x = canvas.width - padX;
     ctx2.fillText(text, x, y);
     y += lineHeight;
   };
@@ -205,7 +207,8 @@ export function buildImageReceiptPayload(
   const cropped = document.createElement("canvas");
   cropped.width = canvas.width;
   cropped.height = finalH;
-  const cctx = cropped.getContext("2d", { willReadFrequently: true })!;
+  const cctx = cropped.getContext("2d", { willReadFrequently: true });
+  if (!cctx) throw new Error("Canvas 2D context not available");
   cctx.fillStyle = "#fff";
   cctx.fillRect(0, 0, cropped.width, cropped.height);
   cctx.drawImage(canvas, 0, 0);

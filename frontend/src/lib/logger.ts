@@ -23,11 +23,13 @@ function log(level: LogLevel, msg: string, meta?: Record<string, unknown>) {
   };
 
   if (isDev) {
-    const color = level === 'error' ? '\x1b[31m' : level === 'warn' ? '\x1b[33m' : '\x1b[36m';
-    const meta_str = meta ? ' ' + JSON.stringify(meta) : '';
-    console[level](`${color}[${level.toUpperCase()}]\x1b[0m ${msg}${meta_str}`);
+    let color = '\x1b[36m';
+    if (level === 'error') color = '\x1b[31m';
+    else if (level === 'warn') color = '\x1b[33m';
+    const meta_str = meta ? ` ${  JSON.stringify(meta)}` : '';
+    console.info(`${color}[${level.toUpperCase()}]\x1b[0m ${msg}${meta_str}`);
   } else {
-    console[level](JSON.stringify(entry));
+    console.info(JSON.stringify(entry));
   }
 }
 

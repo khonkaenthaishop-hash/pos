@@ -513,7 +513,7 @@ export default function SalesHistoryPage() {
         search: search || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter,
         from: dateFrom ? new Date(dateFrom).toISOString() : undefined,
-        to: dateTo ? new Date(dateTo + "T23:59:59").toISOString() : undefined,
+        to: dateTo ? new Date(`${dateTo  }T23:59:59`).toISOString() : undefined,
         page: currentPage,
         limit: PAGE_SIZE,
       });
@@ -551,7 +551,7 @@ export default function SalesHistoryPage() {
     ];
     const footerLines = (() => {
       const fl = Array.isArray(receiptSettings?.footerLines)
-        ? receiptSettings!.footerLines.map((v) => String(v ?? "").trim()).filter(Boolean)
+        ? (receiptSettings?.footerLines ?? []).map((v) => String(v ?? "").trim()).filter(Boolean)
         : [];
       if (fl.length > 0) return fl;
       const legacy = [receiptSettings?.footerLine1, receiptSettings?.footerLine2, receiptSettings?.footerLine3]
@@ -723,16 +723,18 @@ export default function SalesHistoryPage() {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {isLoading && orders.length === 0 ? (
+        {isLoading && orders.length === 0 && (
           <div className="h-48 flex items-center justify-center text-gray-400">
             <Loader2 size={20} className="animate-spin mr-2" /> กำลังโหลด...
           </div>
-        ) : orders.length === 0 ? (
+        )}
+        {!isLoading && orders.length === 0 && (
           <div className="h-48 flex flex-col items-center justify-center text-gray-300 gap-2">
             <AlertTriangle size={28} />
             <span className="text-sm">ไม่พบรายการขาย</span>
           </div>
-        ) : (
+        )}
+        {orders.length > 0 && (
           <>
             {orders.map((o) => (
               <OrderRow

@@ -90,7 +90,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {NAV.map(({ href, labelKey, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/');
+            const active = pathname === href || pathname.startsWith(`${href  }/`);
             const label = t(labelKey);
             return (
               <Link
@@ -159,7 +159,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 flex">
           {BOTTOM_NAV.map(({ href, labelKey, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/');
+            const active = pathname === href || pathname.startsWith(`${href  }/`);
             return (
               <Link
                 key={href}

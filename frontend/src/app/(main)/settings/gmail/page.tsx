@@ -53,7 +53,7 @@ function GmailSettingsContent() {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('callback');
       const qs = params.toString();
-      router.replace(`/settings/gmail${qs ? '?' + qs : ''}`);
+      router.replace(`/settings/gmail${qs ? `?${  qs}` : ''}`);
     }
   }, [searchParams, router]);
 

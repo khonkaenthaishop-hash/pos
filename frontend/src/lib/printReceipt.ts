@@ -46,7 +46,7 @@ const THAI_WIN874: number[] = [
 function encodeAscii(text: string): Uint8Array {
   const out: number[] = [];
   for (const ch of text) {
-    const cp = ch.codePointAt(0)!;
+    const cp = ch.codePointAt(0) ?? 0x3f;
     if (cp < 0x80) out.push(cp);
     else if (cp >= 0x0e00 && cp <= 0x0e5f) {
       // Unicode Thai → Windows-874 byte

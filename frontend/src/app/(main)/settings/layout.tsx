@@ -80,7 +80,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 </p>
                 <div className="space-y-0.5">
                   {visibleItems.map(({ href, label, icon: Icon }) => {
-                    const active = pathname === href || pathname.startsWith(href + '/');
+                    const active = pathname === href || pathname.startsWith(`${href  }/`);
                     return (
                       <Link
                         key={href}
