@@ -297,9 +297,7 @@ export class ProductsService {
       // so POS stock deduction (which reads product_location) stays in sync
       const existingLocs = await manager.find(ProductLocation, { where: { productId: id } });
       if (existingLocs.length > 0) {
-        // Distribute adjustment proportionally across existing locations,
-        // or simply set the first location to reflect the new total
-        const _totalInLocs = existingLocs.reduce((s, l) => s + Number(l.quantity), 0);
+        // Distribute adjustment across existing locations, then batch-save all at once
         let remaining = adjustment;
         for (const loc of existingLocs) {
           const locQty = Number(loc.quantity);
@@ -309,9 +307,8 @@ export class ProductsService {
             : Math.max(remaining, -locQty);     // deduct but don't go negative
           loc.quantity = locQty + change;
           remaining -= change;
-          await manager.save(ProductLocation, loc);
-          if (remaining === 0) break;
         }
+        await manager.save(ProductLocation, existingLocs);
       } else if (adjustment > 0) {
         // No location rows yet — create one using product's locationCode or 'FRONT'
         const { Location } = await import('./location.entity');
