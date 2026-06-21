@@ -242,6 +242,34 @@ export class GmailService {
     return '';
   }
 
+  async storeTokens(accessToken: string, refreshToken: string, email: string, expiryDate: number): Promise<void> {
+    const tokenExpiry = new Date(expiryDate);
+
+    const existing = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
+
+    if (existing) {
+      await this.credentialRepo.update(existing.id, {
+        emailAddress: email,
+        accessToken: encrypt(accessToken),
+        refreshToken: encrypt(refreshToken),
+        tokenExpiry,
+        status: 'active',
+      });
+    } else {
+      const credential = this.credentialRepo.create({
+        storeId: GMAIL_STORE_ID,
+        emailAddress: email,
+        accessToken: encrypt(accessToken),
+        refreshToken: encrypt(refreshToken),
+        tokenExpiry,
+        status: 'active',
+      });
+      await this.credentialRepo.save(credential);
+    }
+
+    this.logger.log(`Gmail tokens stored via proxy for ${email}`);
+  }
+
   async disconnectGmail(): Promise<void> {
     const credential = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
     if (!credential) {

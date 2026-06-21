@@ -11,6 +11,8 @@ import {
   HttpCode,
   HttpStatus,
   Res,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -22,6 +24,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles, CurrentUser } from '../auth/roles.decorator';
 import { UserRole } from '../users/user.entity';
+import { StoreTokensDto } from './dto/store-tokens.dto';
 
 @ApiTags('Gmail Shipping')
 @Controller('gmail-shipping')
@@ -63,6 +66,22 @@ export class GmailShippingController {
       this.logger.error(`OAuth exchange failed: ${err instanceof Error ? err.message : String(err)}`);
       return res.redirect(`${frontendUrl}/settings/gmail?error=exchange_failed`);
     }
+  }
+
+  // ─── Store tokens (called by Vercel proxy — service-to-service) ──
+  @Post('store-tokens')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Store Gmail tokens — called by Vercel OAuth proxy (no JWT, secret-protected)' })
+  async storeTokens(
+    @Headers('authorization') authHeader: string,
+    @Body() body: StoreTokensDto,
+  ) {
+    const expectedSecret = this.configService.get<string>('GMAIL_CALLBACK_SECRET');
+    if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+      this.logger.warn('store-tokens: unauthorized attempt');
+      throw new UnauthorizedException('Invalid service secret');
+    }
+    await this.gmailService.storeTokens(body.accessToken, body.refreshToken, body.email, body.expiryDate);
   }
 
   // ─── Connection status ─────────────────────────────────────────────
