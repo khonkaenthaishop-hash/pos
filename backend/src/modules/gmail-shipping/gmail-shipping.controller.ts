@@ -15,6 +15,7 @@ import {
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
 import { GmailService } from './gmail.service';
 import { ShippingSyncService } from './shipping-sync.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -25,6 +26,8 @@ import { UserRole } from '../users/user.entity';
 @ApiTags('Gmail Shipping')
 @Controller('gmail-shipping')
 export class GmailShippingController {
+  private readonly logger = new Logger(GmailShippingController.name);
+
   constructor(
     private readonly gmailService: GmailService,
     private readonly syncService: ShippingSyncService,
@@ -47,13 +50,17 @@ export class GmailShippingController {
   @ApiOperation({ summary: 'OAuth2 callback — called by Google (no auth required)' })
   async exchangeCode(@Query('code') code: string, @Res() res: Response) {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'https://khonkaen-pos.vercel.app';
+    this.logger.log(`OAuth callback received — code present: ${!!code}`);
     if (!code) {
+      this.logger.error('OAuth callback missing code parameter');
       return res.redirect(`${frontendUrl}/settings/gmail?error=missing_code`);
     }
     try {
       await this.gmailService.exchangeCodeForTokens(code);
+      this.logger.log('OAuth exchange succeeded — redirecting to frontend');
       return res.redirect(`${frontendUrl}/settings/gmail?callback=true`);
-    } catch {
+    } catch (err) {
+      this.logger.error(`OAuth exchange failed: ${err instanceof Error ? err.message : String(err)}`);
       return res.redirect(`${frontendUrl}/settings/gmail?error=exchange_failed`);
     }
   }
