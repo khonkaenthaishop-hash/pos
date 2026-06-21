@@ -47,6 +47,7 @@ export const authApi = {
   login: (username: string, password: string) =>
     api.post("/auth/login", { username, password }),
   me: () => api.get("/auth/me"),
+  /** Server-side check: returns 200 if caller is manager/owner, 401 otherwise */
   verifyManager: () => api.post("/auth/verify-manager"),
 };
 
@@ -108,9 +109,12 @@ export const ordersApi = {
 
 // ── Held Orders ──────────────────────────────────────────────────
 export const heldOrdersApi = {
+  /** List summaries (no cart JSON) */
   list: (all?: boolean) =>
     api.get("/held-orders", { params: all ? { all: "true" } : undefined }),
+  /** Get full record including cart */
   getById: (id: string) => api.get(`/held-orders/${id}`),
+  /** Save cart as held order */
   hold: (data: {
     label?: string;
     customerId?: string;
@@ -119,7 +123,9 @@ export const heldOrdersApi = {
     discount?: number;
     note?: string;
   }) => api.post("/held-orders", data),
+  /** Resume (returns full record + deletes it) */
   resume: (id: string) => api.post(`/held-orders/${id}/resume`),
+  /** Permanently discard */
   discard: (id: string) => api.delete(`/held-orders/${id}`),
 };
 
@@ -143,6 +149,7 @@ export const shipmentsApi = {
     api.patch(`/shipments/${id}/notify`, data),
   byOrder: (orderId: string) => api.get(`/shipments/order/${orderId}`),
   pendingNotify: () => api.get("/shipments/pending-notify"),
+  /** Search orders that are eligible to be shipped (PENDING / CONFIRMED status) */
   shippableOrders: (search?: string) =>
     api.get("/shipments/shippable-orders", { params: { search } }),
 };
@@ -206,11 +213,15 @@ export const usersApi = {
 
 // ── Cashier Sessions ─────────────────────────────────────────────
 export const cashierSessionsApi = {
+  /** Returns today's session or null if none exists */
   getToday: () => api.get('/cashier-sessions/today'),
+  /** Open a session. 409 if already open today */
   open: (openingAmount: number, note?: string) =>
     api.post('/cashier-sessions/open', { openingAmount, note }),
+  /** Close today's session */
   close: (closingAmount: number, note?: string) =>
     api.post('/cashier-sessions/close', { closingAmount, note }),
+  /** Manager: list sessions */
   list: (from?: string, to?: string) =>
     api.get('/cashier-sessions', { params: { from, to } }),
 };
