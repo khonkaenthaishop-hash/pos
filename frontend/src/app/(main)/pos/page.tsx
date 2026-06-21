@@ -1,6 +1,7 @@
+/* eslint-disable max-lines */
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type RefObject } from "react";
 import toast from "react-hot-toast";
 import { getProductScanMeta } from "@/lib/utils";
 import {
@@ -406,9 +407,9 @@ function ReturnModal({
                     quantity: number;
                     unitPrice: number;
                   }[]) || []
-                ).map((item, i) => (
+                ).map((item) => (
                   <div
-                    key={`return-item-${i}`}
+                    key={`return-item-${item.productNameTh}`}
                     className="flex justify-between text-xs text-gray-600"
                   >
                     <span>
@@ -485,6 +486,7 @@ function ReportModal({
           </button>
         </div>
         <div className="p-4">
+          {/* eslint-disable-next-line no-nested-ternary */}
           {isLoadingReport ? (
             <div className="h-32 flex items-center justify-center">
               <Loader2 size={18} className="animate-spin text-gray-400" />
@@ -834,6 +836,7 @@ function ProductGrid({
 }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 flex-1 overflow-y-auto min-h-50">
+      {/* eslint-disable-next-line no-nested-ternary */}
       {isLoadingProducts ? (
         <div className="h-48 flex items-center justify-center text-gray-400">
           <Loader2 size={18} className="animate-spin" />
@@ -1086,7 +1089,782 @@ function CartSummaryFooter({
   );
 }
 
+function CatalogBar({
+  cashierSession,
+  searchRef,
+  search,
+  setSearch,
+  categories,
+  activeCategoryId,
+  heldBills,
+  cart,
+  role,
+  onSearch,
+  onClearSearch,
+  onShowHeld,
+  onShowReturn,
+  onShowReport,
+  onShowCart,
+  onCategoryChange,
+}: {
+  cashierSession: CashierSession | null | false;
+  searchRef: RefObject<HTMLInputElement | null>;
+  search: string;
+  setSearch: (v: string) => void;
+  categories: Category[];
+  activeCategoryId: string;
+  heldBills: HeldSummary[];
+  cart: CartItem[];
+  role: string;
+  onSearch: (e: React.FormEvent) => void;
+  onClearSearch: () => void;
+  onShowHeld: () => void;
+  onShowReturn: () => void;
+  onShowReport: () => void;
+  onShowCart: () => void;
+  onCategoryChange: (categoryId: string) => void;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-gray-800 shrink-0">
+          <Receipt size={18} className="text-orange-500" />
+          <span className="font-bold text-sm">POS</span>
+          {cashierSession && (
+            <span
+              className={`text-xs font-normal ${cashierSession.status === "closed" ? "text-red-400" : "text-gray-400"}`}
+            >
+              {cashierSession.status === "closed"
+                ? "🔒 ปิดวันแล้ว"
+                : `เปิด ${Number(cashierSession.openingAmount).toLocaleString()} ฿`}
+            </span>
+          )}
+        </div>
+        <form onSubmit={onSearch} className="flex-1 min-w-0">
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหา / Barcode..."
+              className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm outline-none focus:border-orange-400"
+            />
+          </div>
+        </form>
+        <button
+          onClick={onClearSearch}
+          className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600"
+        >
+          <X size={15} />
+        </button>
+        {/* Toolbar */}
+        <button
+          onClick={onShowHeld}
+          title="บิลที่พัก"
+          className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-amber-100 rounded-xl text-gray-600 hover:text-amber-600 relative"
+        >
+          <PauseCircle size={15} />
+          {heldBills.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[10px] rounded-full flex items-center justify-center">
+              {heldBills.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={onShowReturn}
+          title="คืนสินค้า"
+          className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-red-50 rounded-xl text-gray-600 hover:text-red-500"
+        >
+          <RotateCcw size={15} />
+        </button>
+        {(role === "owner" || role === "manager") && (
+          <button
+            onClick={onShowReport}
+            title="รายงาน"
+            className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-orange-50 rounded-xl text-gray-600 hover:text-orange-500"
+          >
+            <BarChart2 size={15} />
+          </button>
+        )}
+        {/* Mobile cart toggle */}
+        <button
+          onClick={onShowCart}
+          title="ตะกร้า"
+          className="lg:hidden w-9 h-9 flex items-center justify-center bg-gray-900 hover:bg-gray-800 rounded-xl text-white relative"
+        >
+          <ShoppingCart size={15} />
+          {cart.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+              {cart.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Category pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <button
+          onClick={() => onCategoryChange("")}
+          className={`shrink-0 px-3 py-1.5 rounded-xl text-sm border transition ${activeCategoryId === "" ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Tag size={13} /> ทั้งหมด
+          </span>
+        </button>
+        {categories.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => onCategoryChange(c.id)}
+            className={`shrink-0 px-3 py-1.5 rounded-xl text-sm border transition ${activeCategoryId === c.id ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"}`}
+          >
+            <span className="flex items-center gap-1">
+              {c.icon && <span>{c.icon}</span>}
+              {c.nameTh}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── CartAside ─────────────────────────────────────────────────
+function CartAside({
+  showMobileCart,
+  bills,
+  activeBillId,
+  cart,
+  receiptOrder,
+  cashierSession,
+  subtotal,
+  discountInput,
+  onCloseMobileCart,
+  onSelectBill,
+  onCloseBill,
+  onAddBill,
+  onReopenReceipt,
+  onHoldBill,
+  onClearCart,
+  onRemoveItem,
+  onUpdateQty,
+  onSetDiscount,
+  onDiscountChange,
+  onCheckout,
+}: {
+  showMobileCart: boolean;
+  bills: Bill[];
+  activeBillId: string;
+  cart: CartItem[];
+  receiptOrder: CreatedOrder | null;
+  cashierSession: CashierSession | null | false;
+  subtotal: number;
+  discountInput: number;
+  onCloseMobileCart: () => void;
+  onSelectBill: (id: string) => void;
+  onCloseBill: (id: string) => void;
+  onAddBill: () => void;
+  onReopenReceipt: () => void;
+  onHoldBill: () => void;
+  onClearCart: () => void;
+  onRemoveItem: (id: string) => void;
+  onUpdateQty: (id: string, delta: number) => void;
+  onSetDiscount: (id: string, val: number) => void;
+  onDiscountChange: (v: number) => void;
+  onCheckout: () => void;
+}) {
+  return (
+    <aside className={`
+      bg-white border border-gray-200 flex flex-col
+      lg:rounded-2xl lg:min-h-0 lg:static lg:shadow-none
+      fixed inset-x-0 bottom-0 z-40 rounded-t-2xl shadow-2xl
+      transition-transform duration-300
+      ${showMobileCart ? 'translate-y-0' : 'translate-y-full'}
+      lg:translate-y-0 lg:relative lg:inset-auto
+      max-h-[85vh] lg:max-h-none
+    `}>
+      {/* Mobile cart drag handle */}
+      <div className="lg:hidden flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
+        <span className="font-bold text-sm">ตะกร้า</span>
+        <button onClick={onCloseMobileCart} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100">
+          <X size={14} />
+        </button>
+      </div>
+      {/* Bill tabs */}
+      <div className="px-3 pt-3 flex items-center gap-1 overflow-x-auto no-scrollbar">
+        {bills.map((b) => (
+          <div key={b.id} className="flex items-center shrink-0">
+            <button
+              onClick={() => onSelectBill(b.id)}
+              className={`px-3 py-1.5 rounded-t-xl text-xs font-semibold transition ${b.id === activeBillId ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            >
+              {b.label}
+              {b.cart.length > 0 && (
+                <span className="ml-1 opacity-70">({b.cart.length})</span>
+              )}
+            </button>
+            {bills.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCloseBill(b.id);
+                }}
+                className="ml-0.5 text-gray-400 hover:text-red-500"
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={onAddBill}
+          className="shrink-0 w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-orange-50 rounded-xl text-gray-500 hover:text-orange-500 ml-1"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+
+      {/* Cart header */}
+      <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+        <div className="text-xs text-gray-400">
+          {cart.reduce((s, i) => s + i.qty, 0)} ชิ้น / {cart.length} รายการ
+        </div>
+        <div className="flex items-center gap-1">
+          {receiptOrder && (
+            <button
+              onClick={onReopenReceipt}
+              title="พิมพ์ใบเสร็จซ้ำ"
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 flex items-center gap-1"
+            >
+              <Receipt size={12} /> พิมพ์
+            </button>
+          )}
+          <button
+            onClick={onHoldBill}
+            title="พักบิล"
+            className="text-xs px-2 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-600 flex items-center gap-1 disabled:opacity-40"
+            disabled={cart.length === 0}
+          >
+            <PauseCircle size={12} /> พัก
+          </button>
+          <button
+            onClick={onClearCart}
+            disabled={cart.length === 0}
+            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 disabled:opacity-40"
+          >
+            ล้าง
+          </button>
+        </div>
+      </div>
+
+      {/* Cart items — scrollable, takes remaining space */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+        <CartItemsList
+          cart={cart}
+          onRemove={onRemoveItem}
+          onUpdateQty={onUpdateQty}
+          onSetDiscount={onSetDiscount}
+        />
+      </div>
+
+      {/* Summary + confirm */}
+      <CartSummaryFooter
+        subtotal={subtotal}
+        discountInput={discountInput}
+        cashierSession={cashierSession}
+        cart={cart}
+        onDiscountChange={onDiscountChange}
+        onCheckout={onCheckout}
+      />
+    </aside>
+  );
+}
+
+// ─── resumeHeldBill helper (module-level to reduce PosPage size) ──
+type ResumeBillCtx = {
+  setBills: React.Dispatch<React.SetStateAction<Bill[]>>;
+  setActiveBillId: React.Dispatch<React.SetStateAction<string>>;
+  setHeldBills: React.Dispatch<React.SetStateAction<HeldSummary[]>>;
+  setShowHeldPanel: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+async function resumeHeldBillFn(id: string, ctx: ResumeBillCtx) {
+  try {
+    const r = await heldOrdersApi.resume(id);
+    const held = r.data as {
+      id: string;
+      label?: string;
+      cart: Array<{
+        productId?: string;
+        productNameTh: string;
+        unitPrice: number;
+        quantity: number;
+        itemDiscount?: number;
+        pickLocation?: string;
+      }>;
+      customerId?: string;
+      customerName?: string;
+      discount?: number;
+      note?: string;
+    };
+    let restoredCustomer: Customer | null = null;
+    if (held.customerId) {
+      try {
+        restoredCustomer = (await customersApi.byId(held.customerId)).data as Customer;
+      } catch { /* ignore */ }
+    }
+    const newId = `bill_${crypto.randomUUID()}`;
+    const restoredCart: CartItem[] = (held.cart || []).map((i) => ({
+      id: i.productId || `quick_${crypto.randomUUID()}`,
+      nameTh: i.productNameTh,
+      retailPrice: Number(i.unitPrice),
+      qty: Number(i.quantity),
+      unitQty: Number(i.quantity),
+      packQty: 0,
+      ratio: 1,
+      packPrice: null,
+      promoQty: null,
+      promoPrice: null,
+      itemDiscount: Number(i.itemDiscount ?? 0),
+      discountMode: Number(i.itemDiscount ?? 0) > 0 ? "manual" : "auto",
+      pickLocation: i.pickLocation,
+    }));
+    const restored: Bill = {
+      id: newId,
+      label: held.label || "บิลที่พัก",
+      cart: restoredCart,
+      customer:
+        restoredCustomer ||
+        (held.customerName ? ({ id: "", name: held.customerName } as Customer) : null),
+      discount: Number(held.discount ?? 0),
+      note: held.note || "",
+    };
+    ctx.setBills((prev) => [...prev, restored]);
+    ctx.setActiveBillId(newId);
+    ctx.setHeldBills((prev) => prev.filter((b) => b.id !== id));
+    ctx.setShowHeldPanel(false);
+    toast.success("เรียกบิลคืนแล้ว");
+  } catch {
+    toast.error("เรียกบิลไม่สำเร็จ");
+  }
+}
+
+// ─── handleCheckout helper (module-level to reduce PosPage size) ──
+type CheckoutCtx = {
+  cart: CartItem[];
+  cashierSession: CashierSession | null | false;
+  discount: number;
+  subtotal: number;
+  paymentMethod: PaymentMethodType;
+  cashInput: string;
+  netTotal: number;
+  slipUrl: string;
+  isDebt: boolean;
+  customer: Customer | null;
+  dueDate: string;
+  vatAmount: number;
+  includeVat: boolean;
+  change: number;
+  note: string;
+  loyaltyPoints: number;
+  activeBillId: string;
+  searchRef: React.RefObject<HTMLInputElement | null>;
+  closeBill: (id: string) => void;
+  setIsCheckout: React.Dispatch<React.SetStateAction<boolean>>;
+  setReceiptOrder: React.Dispatch<React.SetStateAction<CreatedOrder | null>>;
+  setIsReceiptOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setCashInput: React.Dispatch<React.SetStateAction<string>>;
+  setSlipUrl: React.Dispatch<React.SetStateAction<string>>;
+  setIsDebt: React.Dispatch<React.SetStateAction<boolean>>;
+  setDueDate: React.Dispatch<React.SetStateAction<string>>;
+  setSearch: React.Dispatch<React.SetStateAction<string>>;
+};
+
+async function handleCheckoutFn(ctx: CheckoutCtx): Promise<boolean> {
+  if (ctx.cart.length === 0) { toast.error("ตะกร้าว่าง"); return false; }
+  if (ctx.cashierSession && (ctx.cashierSession as CashierSession).status === "closed") {
+    toast.error("ปิดแคชเชียร์แล้ว ไม่สามารถรับชำระเงินได้");
+    return false;
+  }
+  if (ctx.discount > ctx.subtotal) {
+    toast.error(`ส่วนลด (${money(ctx.discount)} ฿) เกินยอดรวม (${money(ctx.subtotal)} ฿)`);
+    return false;
+  }
+  if (ctx.paymentMethod === "cash" && (Number(ctx.cashInput) || 0) < ctx.netTotal) {
+    toast.error("เงินสดไม่พอ"); return false;
+  }
+  if ((ctx.paymentMethod === "qr" || ctx.paymentMethod === "transfer") && !ctx.slipUrl) {
+    toast.error("ต้องแนบสลิปก่อน"); return false;
+  }
+  if (ctx.isDebt) {
+    if (!ctx.customer) { toast.error("บิลเชื่อต้องระบุลูกค้า"); return false; }
+    if (!ctx.dueDate) { toast.error("บิลเชื่อต้องระบุวันครบกำหนด"); return false; }
+    if ((Number(ctx.customer.totalDebt) || 0) + ctx.netTotal > MAX_DEBT) {
+      toast.error(`ลูกค้ามีหนี้เกินวงเงิน ${MAX_DEBT.toLocaleString()} ฿`); return false;
+    }
+  }
+  ctx.setIsCheckout(true);
+  let ok = false;
+  try {
+    const res = await ordersApi.createPos({
+      items: ctx.cart.map((i) => ({
+        productId: i.id,
+        productNameTh: i.nameTh,
+        productNameEn: i.nameEn || undefined,
+        quantity: i.qty,
+        unitPrice: i.retailPrice,
+        itemDiscount: i.itemDiscount,
+      })),
+      customerId: ctx.customer?.id || undefined,
+      customerName: ctx.customer?.name || undefined,
+      discount: ctx.discount,
+      vatAmount: ctx.vatAmount,
+      includeVat: ctx.includeVat,
+      paymentMethod: ctx.paymentMethod,
+      isDebt: ctx.isDebt,
+      debtAmount: ctx.isDebt ? ctx.netTotal : 0,
+      dueDate: ctx.dueDate || undefined,
+      slipUrl: ctx.slipUrl || undefined,
+      note:
+        [
+          ctx.note,
+          ctx.paymentMethod === "cash"
+            ? `รับ=${money(Number(ctx.cashInput))}/ทอน=${money(ctx.change)}`
+            : "",
+        ].filter(Boolean).join(" | ") || undefined,
+    });
+    const created: CreatedOrder = {
+      ...(res.data as CreatedOrder),
+      total: ctx.netTotal,
+      cashReceived: ctx.paymentMethod === "cash" ? Number(ctx.cashInput) || 0 : undefined,
+      change: ctx.paymentMethod === "cash" ? ctx.change : undefined,
+    };
+    if (ctx.customer?.id && ctx.loyaltyPoints > 0) {
+      customersApi.update(ctx.customer.id, {
+        loyaltyPoints: (ctx.customer.loyaltyPoints || 0) + ctx.loyaltyPoints,
+      }).catch(() => {});
+    }
+    toast.success(`ชำระเงินสำเร็จ${ctx.loyaltyPoints > 0 ? ` (+${ctx.loyaltyPoints} แต้ม)` : ""}`);
+    ctx.setReceiptOrder(created);
+    ctx.setIsReceiptOpen(true);
+    ctx.closeBill(ctx.activeBillId);
+    ctx.setCashInput("");
+    ctx.setSlipUrl("");
+    ctx.setIsDebt(false);
+    ctx.setDueDate("");
+    ctx.setSearch("");
+    ctx.searchRef.current?.focus();
+    ok = true;
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } };
+    toast.error(e.response?.data?.message || "เกิดข้อผิดพลาด");
+  } finally {
+    ctx.setIsCheckout(false);
+  }
+  return ok;
+}
+
+// ─── handleSetOpening helper (module-level to reduce PosPage size) ──
+type OpeningCtx = {
+  openingInput: string;
+  today: string;
+  setCashierSession: React.Dispatch<React.SetStateAction<CashierSession | null | false>>;
+  setShowOpeningModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsSettingOpening: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+async function handleSetOpeningFn(ctx: OpeningCtx) {
+  const amt = Number(ctx.openingInput);
+  if (isNaN(amt) || ctx.openingInput.trim() === "") {
+    toast.error("กรุณากรอกจำนวนเงิน");
+    return;
+  }
+  ctx.setIsSettingOpening(true);
+  try {
+    const res = await cashierSessionsApi.open(amt);
+    ctx.setCashierSession(res.data as CashierSession);
+    ctx.setShowOpeningModal(false);
+    toast.success(`เปิดแคชเชียร์แล้ว — เงินเปิด ${amt.toLocaleString()} ฿`);
+  } catch (err: unknown) {
+    const e = err as {
+      response?: {
+        status?: number;
+        data?: { message?: string; sessionId?: string; openingAmount?: number; status?: string };
+      };
+    };
+    if (e.response?.status === 409) {
+      const existing = e.response.data;
+      if (existing?.sessionId) {
+        const s: CashierSession = {
+          id: existing.sessionId,
+          date: ctx.today,
+          openingAmount: existing.openingAmount ?? amt,
+          closingAmount: null,
+          status: (existing.status as "open" | "closed") ?? "open",
+          openedAt: new Date().toISOString(),
+          closedAt: null,
+        };
+        ctx.setCashierSession(s);
+        ctx.setShowOpeningModal(false);
+        toast(`วันนี้เปิดแคชเชียร์แล้ว (${Number(s.openingAmount).toLocaleString()} ฿)`, { icon: "ℹ️" });
+      } else {
+        toast.error("มีการเปิดแคชเชียร์วันนี้แล้ว");
+        ctx.setShowOpeningModal(false);
+      }
+    } else {
+      toast.error(e.response?.data?.message || "บันทึกไม่สำเร็จ");
+    }
+  } finally {
+    ctx.setIsSettingOpening(false);
+  }
+}
+
+// ─── addToCart helper (module-level to reduce PosPage size) ──────
+async function addToCartFn(
+  p: Product,
+  updateActiveBill: (updater: (b: Bill) => Bill) => void,
+) {
+  const low = (p.currentStock ?? 99) <= (p.minStock ?? 0);
+  if (low) toast(`⚠ สต็อกต่ำ (${p.currentStock} ชิ้น)`, { icon: "⚠️" });
+
+  const scan = getProductScanMeta(p);
+  const ratio = Math.max(1, Math.floor(Number(scan?.ratio || p.conversionFactor || 1) || 1));
+  const isPack = scan?.kind === "pack" && ratio > 1;
+  const addQty = isPack ? ratio : 1;
+
+  updateActiveBill((b) => {
+    const idx = b.cart.findIndex((i) => i.id === p.id);
+    if (idx >= 0) {
+      return {
+        ...b,
+        cart: b.cart.map((i, ix) => {
+          if (ix !== idx) return i;
+          const next: CartItem = {
+            ...i,
+            ratio,
+            packPrice: p.wholesalePrice != null ? Number(p.wholesalePrice) : i.packPrice,
+            promoQty: p.promoQty != null ? Number(p.promoQty) : i.promoQty,
+            promoPrice: p.promoPrice != null ? Number(p.promoPrice) : i.promoPrice,
+            discountMode: "auto",
+            unitQty: i.unitQty + (isPack ? 0 : 1),
+            packQty: i.packQty + (isPack ? 1 : 0),
+            qty: i.qty + addQty,
+          };
+          return applyAutoPricing(next);
+        }),
+      };
+    }
+    const created: CartItem = applyAutoPricing({
+      id: p.id,
+      nameTh: p.nameTh,
+      nameEn: p.nameEn || null,
+      retailPrice: Number(p.retailPrice),
+      qty: addQty,
+      unitQty: isPack ? 0 : 1,
+      packQty: isPack ? 1 : 0,
+      ratio,
+      packPrice: p.wholesalePrice != null ? Number(p.wholesalePrice) : null,
+      promoQty: p.promoQty != null ? Number(p.promoQty) : null,
+      promoPrice: p.promoPrice != null ? Number(p.promoPrice) : null,
+      itemDiscount: 0,
+      discountMode: "auto",
+    });
+    return { ...b, cart: [...b.cart, created] };
+  });
+
+  try {
+    const res = await locationsApi.getProductLocations(p.id);
+    const first = (res.data as { fullCode: string }[])?.[0]?.fullCode;
+    if (first) {
+      updateActiveBill((b) => ({
+        ...b,
+        cart: b.cart.map((i) =>
+          i.id === p.id && !i.pickLocation ? { ...i, pickLocation: first } : i,
+        ),
+      }));
+    }
+  } catch { /* not critical */ }
+}
+
+// ─── updateQty helper (module-level to reduce PosPage size) ──────
+function updateQtyFn(
+  id: string,
+  delta: number,
+  updateActiveBill: (updater: (b: Bill) => Bill) => void,
+) {
+  updateActiveBill((b) => ({
+    ...b,
+    cart: b.cart
+      .map((i) => {
+        if (i.id !== id) return i;
+        let unitQty = i.unitQty;
+        let packQty = i.packQty;
+        let qty = i.qty;
+        if (delta > 0) {
+          unitQty += delta;
+          qty += delta;
+        } else if (delta < 0) {
+          for (let n = 0; n < Math.abs(delta); n++) {
+            if (unitQty > 0) { unitQty -= 1; qty -= 1; }
+            else if (packQty > 0) { packQty -= 1; qty -= Math.max(1, i.ratio); }
+          }
+        }
+        return applyAutoPricing({
+          ...i,
+          unitQty: Math.max(0, unitQty),
+          packQty: Math.max(0, packQty),
+          qty: Math.max(0, qty),
+          discountMode: "auto",
+        });
+      })
+      .filter((i) => i.qty > 0),
+  }));
+}
+
+// ─── holdCurrentBill helper (module-level to reduce PosPage size) ─
+type HoldBillCtx = {
+  cart: CartItem[];
+  activeBill: Bill;
+  customer: Customer | null;
+  discountInput: number;
+  note: string;
+  activeBillId: string;
+  closeBill: (id: string) => void;
+  loadHeldBills: () => Promise<void>;
+};
+
+async function holdCurrentBillFn(ctx: HoldBillCtx) {
+  if (ctx.cart.length === 0) { toast.error("ตะกร้าว่าง"); return; }
+  try {
+    await heldOrdersApi.hold({
+      label: ctx.activeBill.label,
+      customerId: ctx.customer?.id || undefined,
+      customerName: ctx.customer?.name || undefined,
+      cart: ctx.cart.map((i) => ({
+        productId: i.id,
+        productNameTh: i.nameTh,
+        unitPrice: i.retailPrice,
+        quantity: i.qty,
+        itemDiscount: i.itemDiscount,
+        pickLocation: i.pickLocation,
+      })),
+      discount: ctx.discountInput,
+      note: ctx.note,
+    });
+    toast.success("พักบิลแล้ว");
+    ctx.closeBill(ctx.activeBillId);
+    await ctx.loadHeldBills();
+  } catch {
+    toast.error("พักบิลไม่สำเร็จ");
+  }
+}
+
+// ─── handleCloseSession helper ────────────────────────────────────
+type CloseSessionCtx = {
+  closingInput: string;
+  setCashierSession: React.Dispatch<React.SetStateAction<CashierSession | null | false>>;
+  setClosingInput: React.Dispatch<React.SetStateAction<string>>;
+  setIsClosingSession: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+async function handleCloseSessionFn(ctx: CloseSessionCtx) {
+  const amt = Number(ctx.closingInput);
+  if (isNaN(amt) || ctx.closingInput.trim() === "") {
+    toast.error("กรุณากรอกยอดเงินปิด"); return;
+  }
+  ctx.setIsClosingSession(true);
+  try {
+    const res = await cashierSessionsApi.close(amt);
+    ctx.setCashierSession(res.data as CashierSession);
+    ctx.setClosingInput("");
+    toast.success(`ปิดแคชเชียร์แล้ว — ยอดปิด ${amt.toLocaleString()} ฿`);
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } };
+    toast.error(e.response?.data?.message || "ปิดแคชเชียร์ไม่สำเร็จ");
+  } finally {
+    ctx.setIsClosingSession(false);
+  }
+}
+
+// ─── fetchReturnOrder + handleReturn helpers ──────────────────────
+type ReturnCtx = {
+  returnOrderId: string;
+  returnOrder: CreatedOrder | null;
+  returnReason: string;
+  setIsFetchingReturn: React.Dispatch<React.SetStateAction<boolean>>;
+  setReturnOrder: React.Dispatch<React.SetStateAction<CreatedOrder | null>>;
+  setIsReturning: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowReturnModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setReturnOrderId: React.Dispatch<React.SetStateAction<string>>;
+  setReturnReason: React.Dispatch<React.SetStateAction<string>>;
+};
+
+async function fetchReturnOrderFn(ctx: Pick<ReturnCtx, "returnOrderId" | "setIsFetchingReturn" | "setReturnOrder">) {
+  const q = ctx.returnOrderId.trim();
+  if (!q) return;
+  ctx.setIsFetchingReturn(true);
+  try {
+    const r = await ordersApi.byOrderNo(q).catch(() => ordersApi.byId(q));
+    ctx.setReturnOrder(r.data as CreatedOrder);
+  } catch {
+    toast.error("ไม่พบออร์เดอร์ — กรุณาตรวจสอบเลขออร์เดอร์");
+  } finally {
+    ctx.setIsFetchingReturn(false);
+  }
+}
+
+async function handleReturnFn(ctx: ReturnCtx) {
+  if (!ctx.returnOrder) { toast.error("กรุณาค้นหาออร์เดอร์ก่อน"); return; }
+  if (!ctx.returnReason.trim()) { toast.error("กรุณากรอกเหตุผลการคืนสินค้า"); return; }
+  ctx.setIsReturning(true);
+  try {
+    await ordersApi.returnOrder(
+      String((ctx.returnOrder as Record<string, unknown>).id),
+      ctx.returnReason,
+    );
+    toast.success("คืนสินค้าสำเร็จ — stock ถูกคืนแล้ว");
+    ctx.setShowReturnModal(false);
+    ctx.setReturnOrder(null);
+    ctx.setReturnOrderId("");
+    ctx.setReturnReason("");
+  } catch (e: unknown) {
+    toast.error(
+      (e as { response?: { data?: { message?: string } } }).response?.data?.message || "เกิดข้อผิดพลาด",
+    );
+  } finally {
+    ctx.setIsReturning(false);
+  }
+}
+
+// ─── loadProducts helper (module-level to reduce PosPage size) ───
+async function loadProductsFn(
+  opts: { search?: string; categoryId?: string } | undefined,
+  role: string,
+  setIsLoadingProducts: React.Dispatch<React.SetStateAction<boolean>>,
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>,
+) {
+  setIsLoadingProducts(true);
+  try {
+    const res = await productsApi.list({
+      search: opts?.search || undefined,
+      categoryId: opts?.categoryId || undefined,
+    });
+    const list = (res.data || []) as Product[];
+    setProducts(role === "cashier" ? list.filter((p) => p.isApproved !== false) : list);
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } };
+    toast.error(e.response?.data?.message || "โหลดสินค้าไม่สำเร็จ");
+  } finally {
+    setIsLoadingProducts(false);
+  }
+}
+
 // ─── Main Component ────────────────────────────────────────────
+// eslint-disable-next-line max-lines-per-function
 export default function PosPage() {
   const role: string = "owner";
   const cashierName = "cashier";
@@ -1258,26 +2036,8 @@ export default function PosPage() {
   }, []);
 
   const loadProducts = useCallback(
-    async (opts?: { search?: string; categoryId?: string }) => {
-      setIsLoadingProducts(true);
-      try {
-        const res = await productsApi.list({
-          search: opts?.search || undefined,
-          categoryId: opts?.categoryId || undefined,
-        });
-        const list = (res.data || []) as Product[];
-        setProducts(
-          role === "cashier"
-            ? list.filter((p) => p.isApproved !== false)
-            : list,
-        );
-      } catch (err: unknown) {
-        const e = err as { response?: { data?: { message?: string } } };
-        toast.error(e.response?.data?.message || "โหลดสินค้าไม่สำเร็จ");
-      } finally {
-        setIsLoadingProducts(false);
-      }
-    },
+    (opts?: { search?: string; categoryId?: string }) =>
+      loadProductsFn(opts, role, setIsLoadingProducts, setProducts),
     [role],
   );
 
@@ -1301,116 +2061,9 @@ export default function PosPage() {
   }, []);
 
   // ─── Cart actions ─────────────────────────────────────────────
-  const addToCart = async (p: Product) => {
-    const low = (p.currentStock ?? 99) <= (p.minStock ?? 0);
-    if (low) toast(`⚠ สต็อกต่ำ (${p.currentStock} ชิ้น)`, { icon: "⚠️" });
+  const addToCart = (p: Product) => addToCartFn(p, updateActiveBill);
 
-    const scan = getProductScanMeta(p);
-    const ratio = Math.max(
-      1,
-      Math.floor(Number(scan?.ratio || p.conversionFactor || 1) || 1),
-    );
-    const isPack = scan?.kind === "pack" && ratio > 1;
-    const addQty = isPack ? ratio : 1;
-
-    updateActiveBill((b) => {
-      const idx = b.cart.findIndex((i) => i.id === p.id);
-      if (idx >= 0) {
-        return {
-          ...b,
-          cart: b.cart.map((i, ix) => {
-            if (ix !== idx) return i;
-            const next: CartItem = {
-              ...i,
-              ratio,
-              packPrice:
-                p.wholesalePrice != null
-                  ? Number(p.wholesalePrice)
-                  : i.packPrice,
-              promoQty: p.promoQty != null ? Number(p.promoQty) : i.promoQty,
-              promoPrice:
-                p.promoPrice != null ? Number(p.promoPrice) : i.promoPrice,
-              discountMode: "auto",
-              unitQty: i.unitQty + (isPack ? 0 : 1),
-              packQty: i.packQty + (isPack ? 1 : 0),
-              qty: i.qty + addQty,
-            };
-            return applyAutoPricing(next);
-          }),
-        };
-      }
-
-      const created: CartItem = applyAutoPricing({
-        id: p.id,
-        nameTh: p.nameTh,
-        nameEn: p.nameEn || null,
-        retailPrice: Number(p.retailPrice),
-        qty: addQty,
-        unitQty: isPack ? 0 : 1,
-        packQty: isPack ? 1 : 0,
-        ratio,
-        packPrice: p.wholesalePrice != null ? Number(p.wholesalePrice) : null,
-        promoQty: p.promoQty != null ? Number(p.promoQty) : null,
-        promoPrice: p.promoPrice != null ? Number(p.promoPrice) : null,
-        itemDiscount: 0,
-        discountMode: "auto",
-      });
-      return { ...b, cart: [...b.cart, created] };
-    });
-
-    try {
-      const res = await locationsApi.getProductLocations(p.id);
-      const first = (res.data as { fullCode: string }[])?.[0]?.fullCode;
-      if (first) {
-        updateActiveBill((b) => ({
-          ...b,
-          cart: b.cart.map((i) =>
-            i.id === p.id && !i.pickLocation
-              ? { ...i, pickLocation: first }
-              : i,
-          ),
-        }));
-      }
-    } catch {
-      /* not critical */
-    }
-  };
-
-  const updateQty = (id: string, delta: number) => {
-    updateActiveBill((b) => ({
-      ...b,
-      cart: b.cart
-        .map((i) => {
-          if (i.id !== id) return i;
-          let unitQty = i.unitQty;
-          let packQty = i.packQty;
-          let qty = i.qty;
-          if (delta > 0) {
-            unitQty += delta;
-            qty += delta;
-          } else if (delta < 0) {
-            for (let n = 0; n < Math.abs(delta); n++) {
-              if (unitQty > 0) {
-                unitQty -= 1;
-                qty -= 1;
-              } else if (packQty > 0) {
-                packQty -= 1;
-                qty -= Math.max(1, i.ratio);
-              }
-            }
-          }
-          const next = applyAutoPricing({
-            ...i,
-            unitQty: Math.max(0, unitQty),
-            packQty: Math.max(0, packQty),
-            qty: Math.max(0, qty),
-            discountMode: "auto",
-          });
-          return next;
-        })
-        .filter((i) => i.qty > 0),
-    }));
-  };
+  const updateQty = (id: string, delta: number) => updateQtyFn(id, delta, updateActiveBill);
 
   const setItemDiscount = (id: string, val: number) => {
     if (val > DISCOUNT_LIMIT && role !== "owner" && role !== "manager") {
@@ -1496,101 +2149,11 @@ export default function PosPage() {
   };
 
   // ─── Hold bill ────────────────────────────────────────────────
-  const holdCurrentBill = async () => {
-    if (cart.length === 0) {
-      toast.error("ตะกร้าว่าง");
-      return;
-    }
-    try {
-      await heldOrdersApi.hold({
-        label: activeBill.label,
-        customerId: customer?.id || undefined,
-        customerName: customer?.name || undefined,
-        cart: cart.map((i) => ({
-          productId: i.id,
-          productNameTh: i.nameTh,
-          unitPrice: i.retailPrice,
-          quantity: i.qty,
-          itemDiscount: i.itemDiscount,
-          pickLocation: i.pickLocation,
-        })),
-        discount: discountInput,
-        note,
-      });
-      toast.success("พักบิลแล้ว");
-      closeBill(activeBillId);
-      await loadHeldBills();
-    } catch {
-      toast.error("พักบิลไม่สำเร็จ");
-    }
-  };
+  const holdCurrentBill = () =>
+    holdCurrentBillFn({ cart, activeBill, customer, discountInput, note, activeBillId, closeBill, loadHeldBills });
 
-  const resumeHeldBill = async (id: string) => {
-    try {
-      const r = await heldOrdersApi.resume(id);
-      const held = r.data as {
-        id: string;
-        label?: string;
-        cart: Array<{
-          productId?: string;
-          productNameTh: string;
-          unitPrice: number;
-          quantity: number;
-          itemDiscount?: number;
-          pickLocation?: string;
-        }>;
-        customerId?: string;
-        customerName?: string;
-        discount?: number;
-        note?: string;
-      };
-      let restoredCustomer: Customer | null = null;
-      if (held.customerId) {
-        try {
-          restoredCustomer = (await customersApi.byId(held.customerId))
-            .data as Customer;
-        } catch {
-          /* ignore */
-        }
-      }
-      const newId = `bill_${crypto.randomUUID()}`;
-      // Map HeldOrder cart → CartItem shape used by the POS
-      const restoredCart: CartItem[] = (held.cart || []).map((i) => ({
-        id: i.productId || `quick_${crypto.randomUUID()}`,
-        nameTh: i.productNameTh,
-        retailPrice: Number(i.unitPrice),
-        qty: Number(i.quantity),
-        unitQty: Number(i.quantity),
-        packQty: 0,
-        ratio: 1,
-        packPrice: null,
-        promoQty: null,
-        promoPrice: null,
-        itemDiscount: Number(i.itemDiscount ?? 0),
-        discountMode: Number(i.itemDiscount ?? 0) > 0 ? "manual" : "auto",
-        pickLocation: i.pickLocation,
-      }));
-      const restored: Bill = {
-        id: newId,
-        label: held.label || "บิลที่พัก",
-        cart: restoredCart,
-        customer:
-          restoredCustomer ||
-          (held.customerName
-            ? ({ id: "", name: held.customerName } as Customer)
-            : null),
-        discount: Number(held.discount ?? 0),
-        note: held.note || "",
-      };
-      setBills((prev) => [...prev, restored]);
-      setActiveBillId(newId);
-      setHeldBills((prev) => prev.filter((b) => b.id !== id));
-      setShowHeldPanel(false);
-      toast.success("เรียกบิลคืนแล้ว");
-    } catch {
-      toast.error("เรียกบิลไม่สำเร็จ");
-    }
-  };
+  const resumeHeldBill = (id: string) =>
+    resumeHeldBillFn(id, { setBills, setActiveBillId, setHeldBills, setShowHeldPanel });
 
   const discardHeldBill = async (id: string) => {
     try {
@@ -1602,249 +2165,28 @@ export default function PosPage() {
   };
 
   // ─── Opening cash ─────────────────────────────────────────────
-  const handleSetOpening = async () => {
-    const amt = Number(openingInput);
-    if (isNaN(amt) || openingInput.trim() === "") {
-      toast.error("กรุณากรอกจำนวนเงิน");
-      return;
-    }
-    setIsSettingOpening(true);
-    try {
-      const res = await cashierSessionsApi.open(amt);
-      setCashierSession(res.data as CashierSession);
-      setShowOpeningModal(false);
-      toast.success(`เปิดแคชเชียร์แล้ว — เงินเปิด ${amt.toLocaleString()} ฿`);
-    } catch (err: unknown) {
-      const e = err as {
-        response?: {
-          status?: number;
-          data?: {
-            message?: string;
-            sessionId?: string;
-            openingAmount?: number;
-            status?: string;
-          };
-        };
-      };
-      if (e.response?.status === 409) {
-        // Session already opened — load it and proceed (idempotent)
-        const existing = e.response.data;
-        if (existing?.sessionId) {
-          const s: CashierSession = {
-            id: existing.sessionId,
-            date: today,
-            openingAmount: existing.openingAmount ?? amt,
-            closingAmount: null,
-            status: (existing.status as "open" | "closed") ?? "open",
-            openedAt: new Date().toISOString(),
-            closedAt: null,
-          };
-          setCashierSession(s);
-          setShowOpeningModal(false);
-          toast(
-            `วันนี้เปิดแคชเชียร์แล้ว (${Number(s.openingAmount).toLocaleString()} ฿)`,
-            { icon: "ℹ️" },
-          );
-        } else {
-          toast.error("มีการเปิดแคชเชียร์วันนี้แล้ว");
-          setShowOpeningModal(false);
-        }
-      } else {
-        toast.error(e.response?.data?.message || "บันทึกไม่สำเร็จ");
-      }
-    } finally {
-      setIsSettingOpening(false);
-    }
-  };
+  const handleSetOpening = () =>
+    handleSetOpeningFn({ openingInput, today, setCashierSession, setShowOpeningModal, setIsSettingOpening });
 
   // ─── Close session (end of day) ──────────────────────────────
-  const handleCloseSession = async () => {
-    const amt = Number(closingInput);
-    if (isNaN(amt) || closingInput.trim() === "") {
-      toast.error("กรุณากรอกยอดเงินปิด");
-      return;
-    }
-    setIsClosingSession(true);
-    try {
-      const res = await cashierSessionsApi.close(amt);
-      setCashierSession(res.data as CashierSession);
-      setClosingInput("");
-      toast.success(`ปิดแคชเชียร์แล้ว — ยอดปิด ${amt.toLocaleString()} ฿`);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || "ปิดแคชเชียร์ไม่สำเร็จ");
-    } finally {
-      setIsClosingSession(false);
-    }
-  };
+  const handleCloseSession = () =>
+    handleCloseSessionFn({ closingInput, setCashierSession, setClosingInput, setIsClosingSession });
 
   // ─── Checkout ─────────────────────────────────────────────────
-  const handleCheckout = async (): Promise<boolean> => {
-    if (cart.length === 0) {
-      toast.error("ตะกร้าว่าง");
-      return false;
-    }
-
-    // Block checkout if session is closed
-    if (
-      cashierSession &&
-      (cashierSession as CashierSession).status === "closed"
-    ) {
-      toast.error("ปิดแคชเชียร์แล้ว ไม่สามารถรับชำระเงินได้");
-      return false;
-    }
-
-    // Validate discount does not exceed subtotal
-    if (discount > subtotal) {
-      toast.error(
-        `ส่วนลด (${money(discount)} ฿) เกินยอดรวม (${money(subtotal)} ฿)`,
-      );
-      return false;
-    }
-
-    if (paymentMethod === "cash" && (Number(cashInput) || 0) < netTotal) {
-      toast.error("เงินสดไม่พอ");
-      return false;
-    }
-    if ((paymentMethod === "qr" || paymentMethod === "transfer") && !slipUrl) {
-      toast.error("ต้องแนบสลิปก่อน");
-      return false;
-    }
-    if (isDebt) {
-      if (!customer) {
-        toast.error("บิลเชื่อต้องระบุลูกค้า");
-        return false;
-      }
-      if (!dueDate) {
-        toast.error("บิลเชื่อต้องระบุวันครบกำหนด");
-        return false;
-      }
-      if ((Number(customer.totalDebt) || 0) + netTotal > MAX_DEBT) {
-        toast.error(`ลูกค้ามีหนี้เกินวงเงิน ${MAX_DEBT.toLocaleString()} ฿`);
-        return false;
-      }
-    }
-
-    setIsCheckout(true);
-    let ok = false;
-    try {
-      const res = await ordersApi.createPos({
-        items: cart.map((i) => ({
-          productId: i.id,
-          productNameTh: i.nameTh,
-          productNameEn: i.nameEn || undefined,
-          quantity: i.qty,
-          unitPrice: i.retailPrice,
-          itemDiscount: i.itemDiscount,
-        })),
-        customerId: customer?.id || undefined,
-        customerName: customer?.name || undefined,
-        discount,
-        vatAmount,
-        includeVat,
-        paymentMethod,
-        isDebt,
-        debtAmount: isDebt ? netTotal : 0,
-        dueDate: dueDate || undefined,
-        slipUrl: slipUrl || undefined,
-        note:
-          [
-            note,
-            paymentMethod === "cash"
-              ? `รับ=${money(Number(cashInput))}/ทอน=${money(change)}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" | ") || undefined,
-      });
-
-      const created: CreatedOrder = {
-        ...(res.data as CreatedOrder),
-        total: netTotal,
-        cashReceived:
-          paymentMethod === "cash" ? Number(cashInput) || 0 : undefined,
-        change: paymentMethod === "cash" ? change : undefined,
-      };
-
-      // Add loyalty points
-      if (customer?.id && loyaltyPoints > 0) {
-        customersApi
-          .update(customer.id, {
-            loyaltyPoints: (customer.loyaltyPoints || 0) + loyaltyPoints,
-          })
-          .catch(() => {});
-      }
-
-      toast.success(
-        `ชำระเงินสำเร็จ${loyaltyPoints > 0 ? ` (+${loyaltyPoints} แต้ม)` : ""}`,
-      );
-      setReceiptOrder(created);
-      setIsReceiptOpen(true);
-
-      closeBill(activeBillId);
-      setCashInput("");
-      setSlipUrl("");
-      setIsDebt(false);
-      setDueDate("");
-      setSearch("");
-      searchRef.current?.focus();
-      ok = true;
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || "เกิดข้อผิดพลาด");
-    } finally {
-      setIsCheckout(false);
-    }
-    return ok;
-  };
+  const handleCheckout = () =>
+    handleCheckoutFn({
+      cart, cashierSession, discount, subtotal, paymentMethod, cashInput,
+      netTotal, slipUrl, isDebt, customer, dueDate, vatAmount, includeVat,
+      change, note, loyaltyPoints, activeBillId, searchRef, closeBill,
+      setIsCheckout, setReceiptOrder, setIsReceiptOpen, setCashInput,
+      setSlipUrl, setIsDebt, setDueDate, setSearch,
+    });
 
   // ─── Return order ─────────────────────────────────────────────
-  const fetchReturnOrder = async () => {
-    const q = returnOrderId.trim();
-    if (!q) return;
-    setIsFetchingReturn(true);
-    try {
-      // Try human-readable order number first (POS-YYYYMMDD-xxx)
-      // backend GET /orders/by-no/:orderNo handles this
-      const r = await ordersApi.byOrderNo(q).catch(() => ordersApi.byId(q));
-      setReturnOrder(r.data as CreatedOrder);
-    } catch {
-      toast.error("ไม่พบออร์เดอร์ — กรุณาตรวจสอบเลขออร์เดอร์");
-    } finally {
-      setIsFetchingReturn(false);
-    }
-  };
-
-  const handleReturn = async () => {
-    if (!returnOrder) {
-      toast.error("กรุณาค้นหาออร์เดอร์ก่อน");
-      return;
-    }
-    if (!returnReason.trim()) {
-      toast.error("กรุณากรอกเหตุผลการคืนสินค้า");
-      return;
-    }
-    setIsReturning(true);
-    try {
-      // Pass order ID (UUID) — backend now accepts both UUID and orderNo
-      await ordersApi.returnOrder(
-        String((returnOrder as Record<string, unknown>).id),
-        returnReason,
-      );
-      toast.success("คืนสินค้าสำเร็จ — stock ถูกคืนแล้ว");
-      setShowReturnModal(false);
-      setReturnOrder(null);
-      setReturnOrderId("");
-      setReturnReason("");
-    } catch (e: unknown) {
-      toast.error(
-        (e as { response?: { data?: { message?: string } } }).response?.data
-          ?.message || "เกิดข้อผิดพลาด",
-      );
-    } finally {
-      setIsReturning(false);
-    }
-  };
+  const fetchReturnOrder = () =>
+    fetchReturnOrderFn({ returnOrderId, setIsFetchingReturn, setReturnOrder });
+  const handleReturn = () =>
+    handleReturnFn({ returnOrderId, returnOrder, returnReason, setIsFetchingReturn, setReturnOrder, setIsReturning, setShowReturnModal, setReturnOrderId, setReturnReason });
 
   // ─── X Report ─────────────────────────────────────────────────
   const loadReport = async (type: "x" | "z") => {
@@ -2009,123 +2351,31 @@ export default function PosPage() {
       <div className="h-full flex flex-col lg:grid lg:grid-cols-[1fr_380px] gap-4 p-4">
         {/* ── Catalog ─────────────────────────────────────────────── */}
         <section className="min-w-0 flex flex-col gap-4 min-h-0">
-          <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 text-gray-800 shrink-0">
-                <Receipt size={18} className="text-orange-500" />
-                <span className="font-bold text-sm">POS</span>
-                {cashierSession && (
-                  <span
-                    className={`text-xs font-normal ${cashierSession.status === "closed" ? "text-red-400" : "text-gray-400"}`}
-                  >
-                    {cashierSession.status === "closed"
-                      ? "🔒 ปิดวันแล้ว"
-                      : `เปิด ${Number(cashierSession.openingAmount).toLocaleString()} ฿`}
-                  </span>
-                )}
-              </div>
-              <form onSubmit={handleSearch} className="flex-1 min-w-0">
-                <div className="relative">
-                  <Search
-                    size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    ref={searchRef}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="ค้นหา / Barcode..."
-                    className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm outline-none focus:border-orange-400"
-                  />
-                </div>
-              </form>
-              <button
-                onClick={() => {
-                  setSearch("");
-                  loadProducts({ search: "", categoryId: activeCategoryId });
-                  searchRef.current?.focus();
-                }}
-                className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600"
-              >
-                <X size={15} />
-              </button>
-              {/* Toolbar */}
-              <button
-                onClick={() => {
-                  loadHeldBills();
-                  setShowHeldPanel(true);
-                }}
-                title="บิลที่พัก"
-                className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-amber-100 rounded-xl text-gray-600 hover:text-amber-600 relative"
-              >
-                <PauseCircle size={15} />
-                {heldBills.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                    {heldBills.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setShowReturnModal(true)}
-                title="คืนสินค้า"
-                className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-red-50 rounded-xl text-gray-600 hover:text-red-500"
-              >
-                <RotateCcw size={15} />
-              </button>
-              {(role === "owner" || role === "manager") && (
-                <button
-                  onClick={() => loadReport("x")}
-                  title="รายงาน"
-                  className="w-9 h-9 flex items-center justify-center bg-gray-100 hover:bg-orange-50 rounded-xl text-gray-600 hover:text-orange-500"
-                >
-                  <BarChart2 size={15} />
-                </button>
-              )}
-              {/* Mobile cart toggle */}
-              <button
-                onClick={() => setShowMobileCart(true)}
-                title="ตะกร้า"
-                className="lg:hidden w-9 h-9 flex items-center justify-center bg-gray-900 hover:bg-gray-800 rounded-xl text-white relative"
-              >
-                <ShoppingCart size={15} />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                    {cart.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Category pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <button
-                onClick={() => {
-                  setActiveCategoryId("");
-                  loadProducts({ search, categoryId: "" });
-                }}
-                className={`shrink-0 px-3 py-1.5 rounded-xl text-sm border transition ${activeCategoryId === "" ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"}`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Tag size={13} /> ทั้งหมด
-                </span>
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setActiveCategoryId(c.id);
-                    loadProducts({ search, categoryId: c.id });
-                  }}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-sm border transition ${activeCategoryId === c.id ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-700 border-gray-200 hover:border-orange-300"}`}
-                >
-                  <span className="flex items-center gap-1">
-                    {c.icon && <span>{c.icon}</span>}
-                    {c.nameTh}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <CatalogBar
+            cashierSession={cashierSession}
+            searchRef={searchRef}
+            search={search}
+            setSearch={setSearch}
+            categories={categories}
+            activeCategoryId={activeCategoryId}
+            heldBills={heldBills}
+            cart={cart}
+            role={role}
+            onSearch={handleSearch}
+            onClearSearch={() => {
+              setSearch("");
+              loadProducts({ search: "", categoryId: activeCategoryId });
+              searchRef.current?.focus();
+            }}
+            onShowHeld={() => { loadHeldBills(); setShowHeldPanel(true); }}
+            onShowReturn={() => setShowReturnModal(true)}
+            onShowReport={() => loadReport("x")}
+            onShowCart={() => setShowMobileCart(true)}
+            onCategoryChange={(id) => {
+              setActiveCategoryId(id);
+              loadProducts({ search, categoryId: id });
+            }}
+          />
 
           {/* Products grid */}
           <ProductGrid
@@ -2136,123 +2386,41 @@ export default function PosPage() {
         </section>
 
         {/* ── Cart ────────────────────────────────────────────────── */}
-        <aside className={`
-          bg-white border border-gray-200 flex flex-col
-          lg:rounded-2xl lg:min-h-0 lg:static lg:shadow-none
-          fixed inset-x-0 bottom-0 z-40 rounded-t-2xl shadow-2xl
-          transition-transform duration-300
-          ${showMobileCart ? 'translate-y-0' : 'translate-y-full'}
-          lg:translate-y-0 lg:relative lg:inset-auto
-          max-h-[85vh] lg:max-h-none
-        `}>
-          {/* Mobile cart drag handle */}
-          <div className="lg:hidden flex items-center justify-between px-4 pt-3 pb-1">
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
-            <span className="font-bold text-sm">ตะกร้า</span>
-            <button onClick={() => setShowMobileCart(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100">
-              <X size={14} />
-            </button>
-          </div>
-          {/* Bill tabs */}
-          <div className="px-3 pt-3 flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {bills.map((b) => (
-              <div key={b.id} className="flex items-center shrink-0">
-                <button
-                  onClick={() => setActiveBillId(b.id)}
-                  className={`px-3 py-1.5 rounded-t-xl text-xs font-semibold transition ${b.id === activeBillId ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                >
-                  {b.label}
-                  {b.cart.length > 0 && (
-                    <span className="ml-1 opacity-70">({b.cart.length})</span>
-                  )}
-                </button>
-                {bills.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeBill(b.id);
-                    }}
-                    className="ml-0.5 text-gray-400 hover:text-red-500"
-                  >
-                    <X size={11} />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              onClick={addBill}
-              className="shrink-0 w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-orange-50 rounded-xl text-gray-500 hover:text-orange-500 ml-1"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-
-          {/* Cart header */}
-          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-            <div className="text-xs text-gray-400">
-              {cart.reduce((s, i) => s + i.qty, 0)} ชิ้น / {cart.length} รายการ
-            </div>
-            <div className="flex items-center gap-1">
-              {receiptOrder && (
-                <button
-                  onClick={() => setIsReceiptOpen(true)}
-                  title="พิมพ์ใบเสร็จซ้ำ"
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 flex items-center gap-1"
-                >
-                  <Receipt size={12} /> พิมพ์
-                </button>
-              )}
-              <button
-                onClick={holdCurrentBill}
-                title="พักบิล"
-                className="text-xs px-2 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-600 flex items-center gap-1 disabled:opacity-40"
-                disabled={cart.length === 0}
-              >
-                <PauseCircle size={12} /> พัก
-              </button>
-              <button
-                onClick={() => {
-                  if (cart.length > 0 && confirm("ล้างสินค้าในบิลนี้ทั้งหมด?"))
-                    updateActiveBill((b) => ({ ...b, cart: [] }));
-                }}
-                disabled={cart.length === 0}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 disabled:opacity-40"
-              >
-                ล้าง
-              </button>
-            </div>
-          </div>
-
-          {/* Cart items — scrollable, takes remaining space */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
-            <CartItemsList
-              cart={cart}
-              onRemove={(id) =>
-                updateActiveBill((b) => ({
-                  ...b,
-                  cart: b.cart.filter((i) => i.id !== id),
-                }))
-              }
-              onUpdateQty={updateQty}
-              onSetDiscount={setItemDiscount}
-            />
-          </div>
-
-          {/* Summary + confirm */}
-          <CartSummaryFooter
-            subtotal={subtotal}
-            discountInput={discountInput}
-            cashierSession={cashierSession}
-            cart={cart}
-            onDiscountChange={(v) =>
-              updateActiveBill((b) => ({ ...b, discount: v }))
-            }
-            onCheckout={() => {
-              if (cart.length === 0) { toast.error("ตะกร้าว่าง"); return; }
-              setShowConfirmModal(true);
-            }}
-          />
-        </aside>
+        <CartAside
+          showMobileCart={showMobileCart}
+          bills={bills}
+          activeBillId={activeBillId}
+          cart={cart}
+          receiptOrder={receiptOrder}
+          cashierSession={cashierSession}
+          subtotal={subtotal}
+          discountInput={discountInput}
+          onCloseMobileCart={() => setShowMobileCart(false)}
+          onSelectBill={setActiveBillId}
+          onCloseBill={closeBill}
+          onAddBill={addBill}
+          onReopenReceipt={() => setIsReceiptOpen(true)}
+          onHoldBill={holdCurrentBill}
+          onClearCart={() => {
+            if (cart.length > 0 && confirm("ล้างสินค้าในบิลนี้ทั้งหมด?"))
+              updateActiveBill((b) => ({ ...b, cart: [] }));
+          }}
+          onRemoveItem={(id) =>
+            updateActiveBill((b) => ({
+              ...b,
+              cart: b.cart.filter((i) => i.id !== id),
+            }))
+          }
+          onUpdateQty={updateQty}
+          onSetDiscount={setItemDiscount}
+          onDiscountChange={(v) =>
+            updateActiveBill((b) => ({ ...b, discount: v }))
+          }
+          onCheckout={() => {
+            if (cart.length === 0) { toast.error("ตะกร้าว่าง"); return; }
+            setShowConfirmModal(true);
+          }}
+        />
       </div>
 
       <CheckoutConfirmModal

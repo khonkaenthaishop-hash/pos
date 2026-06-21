@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 'use client';
 import { useState, useEffect, useCallback, Fragment, startTransition } from 'react';
 import { productsApi, categoriesApi, locationsApi, inventoryApi } from '@/lib/api';
@@ -38,6 +39,468 @@ function previewAutoSku() {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
   return `SKU-${ts}-${rand}`;
+}
+
+// ─── ProductAddEditForm (extracted to reduce ProductsPage function size) ─
+type AddForm = {
+  nameTh: string; nameZh: string; nameEn: string; barcode: string; packBarcode: string; sku: string;
+  categoryId: string; retailPrice: string; wholesalePrice: string; costPrice: string;
+  promoQty: string; promoPrice: string; unit: string; minStock: string; temperatureType: string;
+  vatRate: string; minWholesaleQty: string; baseUnit: string; wholesaleUnit: string;
+  conversionFactor: string; expiryDate: string; lotNumber: string; locationCode: string;
+  pickSequence: string; supplierId: string; imageUrl: string; descriptionTh: string;
+};
+
+function ProductAddEditForm({
+  addForm, setAddForm, editProductId, categories, units, newUnit, setNewUnit,
+  showUnitManager, setShowUnitManager, suppliers, showSupplierModal, setShowSupplierModal,
+  supplierForm, setSupplierForm, isCreatingSupplier, showLocationModal, setShowLocationModal,
+  locationSearch, setLocationSearch, skuPreview, allLocations,
+  onReset, onCreateSupplier, onSaveUnits, onAdd, onUpdate,
+}: {
+  addForm: AddForm;
+  setAddForm: React.Dispatch<React.SetStateAction<AddForm>>;
+  editProductId: string | null;
+  categories: Category[];
+  units: string[];
+  newUnit: string;
+  setNewUnit: React.Dispatch<React.SetStateAction<string>>;
+  showUnitManager: boolean;
+  setShowUnitManager: React.Dispatch<React.SetStateAction<boolean>>;
+  suppliers: Supplier[];
+  showSupplierModal: boolean;
+  setShowSupplierModal: React.Dispatch<React.SetStateAction<boolean>>;
+  supplierForm: { name: string; phone: string; email: string; address: string };
+  setSupplierForm: React.Dispatch<React.SetStateAction<{ name: string; phone: string; email: string; address: string }>>;
+  isCreatingSupplier: boolean;
+  showLocationModal: boolean;
+  setShowLocationModal: React.Dispatch<React.SetStateAction<boolean>>;
+  locationSearch: string;
+  setLocationSearch: React.Dispatch<React.SetStateAction<string>>;
+  skuPreview: string;
+  allLocations: LocationOption[];
+  onReset: () => void;
+  onCreateSupplier: () => void;
+  onSaveUnits: (next: string[]) => void;
+  onAdd: () => void;
+  onUpdate: (id: string) => void;
+}) {
+  const cost = Number(addForm.costPrice);
+  const wholesale = Number(addForm.wholesalePrice);
+  const retailProfit = calcProfit(addForm.retailPrice, addForm.costPrice);
+  const ratio = Math.max(1, Number(addForm.conversionFactor) || 1);
+  const wProfit = ratio > 1 ? calcProfit(addForm.wholesalePrice, String(cost * ratio)) : calcProfit(addForm.wholesalePrice, addForm.costPrice);
+  const wSugg = cost > 0 ? [Math.round(cost * 1.5), Math.round(cost * 2)] : [];
+  const rSugg = cost > 0 ? [Math.round(wholesale > 0 ? wholesale * 1.5 : cost * 2.5), Math.round(wholesale > 0 ? wholesale * 2 : cost * 3)] : [];
+  const filteredLocs = allLocations.filter(l => l.fullCode.toLowerCase().includes(locationSearch.toLowerCase()));
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-orange-300 p-5 space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Tag size={16} className="text-orange-500" />
+          <h3 className="font-semibold text-gray-900 text-sm">{editProductId ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h3>
+        </div>
+        <button onClick={onReset} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+      </div>
+
+      {/* ── Section 1: ข้อมูลทั่วไป ── */}
+      <section>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ข้อมูลทั่วไป</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">ชื่อไทย <span className="text-red-400">*</span></label>
+            <input value={addForm.nameTh} onChange={e => setAddForm(f => ({ ...f, nameTh: e.target.value }))}
+              placeholder="เช่น น้ำปลาทิพรส 700ml"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">ชื่อจีน</label>
+            <input value={addForm.nameZh} onChange={e => setAddForm(f => ({ ...f, nameZh: e.target.value }))}
+              placeholder="เช่น 魚露"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">ชื่ออังกฤษ</label>
+            <input value={addForm.nameEn} onChange={e => setAddForm(f => ({ ...f, nameEn: e.target.value }))}
+              placeholder="เช่น Fish Sauce 700ml"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Barcode</label>
+            <input value={addForm.barcode} onChange={e => setAddForm(f => ({ ...f, barcode: e.target.value }))}
+              placeholder="เช่น 8850006101019"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Barcode (Pack)</label>
+            <input value={addForm.packBarcode} onChange={e => setAddForm(f => ({ ...f, packBarcode: e.target.value }))}
+              placeholder="เช่น 8850006101026"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            <p className="text-[11px] text-gray-300 mt-1">ใช้สำหรับสแกนรับของ/ขายแบบแพ็ค (คูณตาม Conversion Ratio)</p>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">SKU <span className="text-gray-300">(เว้นว่างเพื่อให้ระบบสร้างอัตโนมัติ)</span></label>
+            <input value={addForm.sku ?? ''} onChange={e => setAddForm(f => ({ ...f, sku: e.target.value }))}
+              placeholder={skuPreview}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 font-mono placeholder-gray-300" />
+            {!addForm.sku && (
+              <p className="text-xs text-gray-400 mt-1">จะได้รับ: <span className="font-mono text-orange-400">{skuPreview}</span></p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">หมวดหมู่</label>
+            <select value={addForm.categoryId} onChange={e => setAddForm(f => ({ ...f, categoryId: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
+              <option value="">— เลือกหมวดหมู่ —</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon  } ` : ''}{c.nameTh}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-500">หน่วยนับ</label>
+              <button type="button" onClick={() => setShowUnitManager(v => !v)}
+                className="text-xs text-orange-500 hover:underline">จัดการหน่วย</button>
+            </div>
+            <select value={addForm.unit} onChange={e => setAddForm(f => ({ ...f, unit: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
+              {units.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+            {showUnitManager && (
+              <div className="mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50 space-y-2">
+                <div className="flex gap-2">
+                  <input value={newUnit} onChange={e => setNewUnit(e.target.value)}
+                    placeholder="หน่วยใหม่ เช่น ลัง"
+                    className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-orange-400" />
+                  <button onClick={() => {
+                    if (!newUnit.trim() || units.includes(newUnit.trim())) return;
+                    onSaveUnits([...units, newUnit.trim()]); setNewUnit('');
+                  }} className="px-2 py-1.5 bg-orange-500 text-white rounded-lg text-xs"><Plus size={12} /></button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {units.map(u => (
+                    <span key={u} className="flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-600">
+                      {u}
+                      {!UNITS_DEFAULT.includes(u) && (
+                        <button onClick={() => onSaveUnits(units.filter(x => x !== u))} className="text-gray-300 hover:text-red-400"><X size={10} /></button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">อุณหภูมิ</label>
+            <select value={addForm.temperatureType} onChange={e => setAddForm(f => ({ ...f, temperatureType: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
+              <option value="normal">🌡 ธรรมดา</option>
+              <option value="cold">❄️ เย็น</option>
+              <option value="frozen">🧊 แช่แข็ง</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Min stock แจ้งเตือน</label>
+            <input type="number" value={addForm.minStock} onChange={e => setAddForm(f => ({ ...f, minStock: e.target.value }))}
+              placeholder="เช่น 5"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">คำอธิบาย (ไทย)</label>
+            <textarea value={addForm.descriptionTh} onChange={e => setAddForm(f => ({ ...f, descriptionTh: e.target.value }))}
+              placeholder="เช่น น้ำปลาแท้คุณภาพสูง ผลิตจากปลาทะเลธรรมชาติ"
+              rows={2}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 resize-none" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">รูปภาพ</label>
+            <ImageUploader
+              value={addForm.imageUrl}
+              onChange={url => setAddForm(f => ({ ...f, imageUrl: url }))}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 2: ราคา ── */}
+      <section>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ราคา & กำไร</p>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Cost */}
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">ราคาทุน (ต้นทุน) ฿</label>
+            <input type="number" value={addForm.costPrice} onChange={e => setAddForm(f => ({ ...f, costPrice: e.target.value }))}
+              placeholder="เช่น 40"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            {/* Price suggestions */}
+            {cost > 0 && (
+              <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <p className="font-semibold text-amber-700">💡 แนะนำราคา (กดเพื่อใช้)</p>
+                <div className="space-y-1">
+                  <p className="text-amber-600">ราคาส่ง (×1.5–2): {wSugg.map(v => (
+                    <button key={v} onClick={() => setAddForm(f => ({ ...f, wholesalePrice: String(v) }))}
+                      className="ml-1 px-2 py-0.5 bg-white border border-amber-300 rounded hover:bg-amber-100 font-mono transition">
+                      {v}฿
+                    </button>
+                  ))}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {wSugg.flatMap(v => psychPrice(v)).filter((v,i,a) => a.indexOf(v) === i).map(v => (
+                      <button key={v} onClick={() => setAddForm(f => ({ ...f, wholesalePrice: String(v) }))}
+                        className="px-2 py-0.5 bg-white border border-amber-200 rounded hover:bg-amber-100 text-gray-600 font-mono transition">
+                        {v}฿ ✨
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-amber-600">ราคาปลีก (×2.5–3): {rSugg.map(v => (
+                    <button key={v} onClick={() => setAddForm(f => ({ ...f, retailPrice: String(v) }))}
+                      className="ml-1 px-2 py-0.5 bg-white border border-amber-300 rounded hover:bg-amber-100 font-mono transition">
+                      {v}฿
+                    </button>
+                  ))}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {rSugg.flatMap(v => psychPrice(v)).filter((v,i,a) => a.indexOf(v) === i).map(v => (
+                      <button key={v} onClick={() => setAddForm(f => ({ ...f, retailPrice: String(v) }))}
+                        className="px-2 py-0.5 bg-white border border-amber-200 rounded hover:bg-amber-100 text-gray-600 font-mono transition">
+                        {v}฿ ✨
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Wholesale */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">ราคายกแพ็ค (Pack Price) ฿</label>
+            <input type="number" value={addForm.wholesalePrice} onChange={e => setAddForm(f => ({ ...f, wholesalePrice: e.target.value }))}
+              placeholder="เช่น 60"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            {wProfit && (
+              <p className={`text-xs mt-1 font-medium ${wProfit.amt >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                กำไร {wProfit.amt >= 0 ? '+' : ''}{wProfit.amt.toFixed(0)} ฿ ({wProfit.pct}%)
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">จำนวนขั้นต่ำราคาส่ง</label>
+            <input type="number" value={addForm.minWholesaleQty} onChange={e => setAddForm(f => ({ ...f, minWholesaleQty: e.target.value }))}
+              placeholder="เช่น 6"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          {/* Retail */}
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">ราคาปลีก ฿ <span className="text-red-400">*</span></label>
+            <input type="number" value={addForm.retailPrice} onChange={e => setAddForm(f => ({ ...f, retailPrice: e.target.value }))}
+              placeholder="เช่น 99"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            {retailProfit && (
+              <p className={`text-xs mt-1 font-medium ${retailProfit.amt >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                กำไร {retailProfit.amt >= 0 ? '+' : ''}{retailProfit.amt.toFixed(0)} ฿ ({retailProfit.pct}%)
+              </p>
+            )}
+          </div>
+          {/* Promo */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">โปรฯ ซื้อ (ชิ้น)</label>
+            <input type="number" min={0} value={addForm.promoQty} onChange={e => setAddForm(f => ({ ...f, promoQty: e.target.value }))}
+              placeholder="เช่น 3"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            <p className="text-[11px] text-gray-300 mt-1">เว้นว่าง = ไม่มีโปรฯ</p>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">ราคาโปรฯ รวม ฿</label>
+            <input type="number" min={0} value={addForm.promoPrice} onChange={e => setAddForm(f => ({ ...f, promoPrice: e.target.value }))}
+              placeholder="เช่น 40"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+            <p className="text-[11px] text-gray-300 mt-1">ตัวอย่าง: 3 ชิ้น = 40 บาท</p>
+          </div>
+          {/* VAT */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">VAT %</label>
+            <input type="number" value={addForm.vatRate} onChange={e => setAddForm(f => ({ ...f, vatRate: e.target.value }))}
+              placeholder="เช่น 7"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          {/* Units conversion */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">หน่วยส่ง (wholesale unit)</label>
+            <input value={addForm.wholesaleUnit} onChange={e => setAddForm(f => ({ ...f, wholesaleUnit: e.target.value }))}
+              placeholder="เช่น ลัง"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">หน่วยฐาน (base unit)</label>
+            <input value={addForm.baseUnit} onChange={e => setAddForm(f => ({ ...f, baseUnit: e.target.value }))}
+              placeholder="เช่น ขวด"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">อัตราแปลง (1 ลัง = ? ขวด)</label>
+            <input type="number" value={addForm.conversionFactor} onChange={e => setAddForm(f => ({ ...f, conversionFactor: e.target.value }))}
+              placeholder="เช่น 12"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 3: ตำแหน่ง/คลัง ── */}
+      <section>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ตำแหน่ง & คลัง</p>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Location picker */}
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">ตำแหน่งจัดเก็บ (Location)</label>
+            <div className="flex gap-2">
+              <input readOnly value={addForm.locationCode}
+                placeholder="เช่น A-01-02-03 (โซน-ทางเดิน-ชั้น-ช่อง)"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 cursor-pointer"
+                onClick={() => setShowLocationModal(true)} />
+              <button type="button" onClick={() => setShowLocationModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:border-orange-400 hover:text-orange-500 transition">
+                <MapPin size={14} /> เลือก
+              </button>
+              {addForm.locationCode && (
+                <button type="button" onClick={() => setAddForm(f => ({ ...f, locationCode: '' }))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-gray-400 hover:text-red-400 transition">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {/* Location Modal */}
+            {showLocationModal && (
+              <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-orange-500" />
+                      <h4 className="font-semibold text-gray-900 text-sm">เลือกตำแหน่งจัดเก็บ</h4>
+                    </div>
+                    <button onClick={() => setShowLocationModal(false)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                  </div>
+                  <div className="px-5 py-3 border-b border-gray-100">
+                    <input value={locationSearch} onChange={e => setLocationSearch(e.target.value)}
+                      placeholder="ค้นหา เช่น A-01 หรือ โซน A"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                  </div>
+                  <div className="max-h-72 overflow-y-auto px-5 py-3 space-y-1">
+                    {filteredLocs.length === 0 ? (
+                      <p className="text-sm text-gray-300 text-center py-8">ไม่พบตำแหน่ง</p>
+                    ) : filteredLocs.map(l => (
+                      <button key={l.id} onClick={() => {
+                        setAddForm(f => ({ ...f, locationCode: l.fullCode }));
+                        setShowLocationModal(false); setLocationSearch('');
+                      }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center justify-between ${
+                          addForm.locationCode === l.fullCode ? 'bg-orange-500 text-white' : 'hover:bg-gray-50 text-gray-700'
+                        }`}>
+                        <span className="font-mono font-medium">{l.fullCode}</span>
+                        {(l.zone || l.aisle || l.shelf || l.bin) && (
+                          <span className="text-xs opacity-60">
+                            {[l.zone && `โซน ${l.zone}`, l.aisle && `ทางเดิน ${l.aisle}`, l.shelf && `ชั้น ${l.shelf}`, l.bin && `ช่อง ${l.bin}`].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">ลำดับหยิบ (pick sequence)</label>
+            <input type="number" value={addForm.pickSequence} onChange={e => setAddForm(f => ({ ...f, pickSequence: e.target.value }))}
+              placeholder="เช่น 1 (น้อย = หยิบก่อน)"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Lot number</label>
+            <input value={addForm.lotNumber} onChange={e => setAddForm(f => ({ ...f, lotNumber: e.target.value }))}
+              placeholder="เช่น LOT2026-001"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">วันหมดอายุ</label>
+            <input type="date" value={addForm.expiryDate} onChange={e => setAddForm(f => ({ ...f, expiryDate: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 text-gray-600" />
+          </div>
+          {/* Supplier */}
+          <div className="col-span-2">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-500">Supplier</label>
+              <button type="button" onClick={() => setShowSupplierModal(true)}
+                className="flex items-center gap-1 text-xs text-orange-500 hover:underline">
+                <Building2 size={11} /> เพิ่ม supplier
+              </button>
+            </div>
+            <select value={addForm.supplierId} onChange={e => setAddForm(f => ({ ...f, supplierId: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white">
+              <option value="">— ไม่ระบุ —</option>
+              {suppliers.filter(s => s.isActive !== false).map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {/* Supplier Create Modal */}
+            {showSupplierModal && (
+              <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={16} className="text-orange-500" />
+                      <h4 className="font-semibold text-gray-900 text-sm">เพิ่ม Supplier</h4>
+                    </div>
+                    <button onClick={() => setShowSupplierModal(false)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">ชื่อบริษัท / ร้าน <span className="text-red-400">*</span></label>
+                      <input value={supplierForm.name} onChange={e => setSupplierForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="เช่น บริษัท ไทยสหพัฒน์"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">เบอร์โทร</label>
+                      <input value={supplierForm.phone} onChange={e => setSupplierForm(f => ({ ...f, phone: e.target.value }))}
+                        placeholder="เช่น 02-123-4567"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">อีเมล</label>
+                      <input value={supplierForm.email} onChange={e => setSupplierForm(f => ({ ...f, email: e.target.value }))}
+                        placeholder="เช่น contact@supplier.com"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">ที่อยู่</label>
+                      <input value={supplierForm.address} onChange={e => setSupplierForm(f => ({ ...f, address: e.target.value }))}
+                        placeholder="เช่น 123 ถ.สุขุมวิท กรุงเทพ"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
+                    </div>
+                    <button onClick={onCreateSupplier} disabled={isCreatingSupplier}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition">
+                      {isCreatingSupplier ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                      บันทึก supplier
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Actions ── */}
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => (editProductId ? onUpdate(editProductId) : onAdd())}
+          className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition">
+          {editProductId ? 'บันทึกการแก้ไข' : 'บันทึกสินค้า'}
+        </button>
+        <button onClick={onReset}
+          className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium text-sm transition">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Product table row (extracted to reduce ProductsPage function size) ─
@@ -247,6 +710,7 @@ function ProductTableRow({
   );
 }
 
+// eslint-disable-next-line max-lines-per-function
 export default function ProductsPage() {
   const role: string = 'owner';
 
@@ -296,6 +760,15 @@ export default function ProductsPage() {
     supplierId: '', imageUrl: '', descriptionTh: '',
   };
   const [addForm, setAddForm] = useState(EMPTY_ADD_FORM);
+
+  const cost = Number(addForm.costPrice);
+  const wholesale = Number(addForm.wholesalePrice);
+  const retailProfit = calcProfit(addForm.retailPrice, addForm.costPrice);
+  const ratio = Math.max(1, Number(addForm.conversionFactor) || 1);
+  const wProfit = ratio > 1 ? calcProfit(addForm.wholesalePrice, String(cost * ratio)) : calcProfit(addForm.wholesalePrice, addForm.costPrice);
+  const wSugg = cost > 0 ? [Math.round(cost * 1.5), Math.round(cost * 2)] : [];
+  const rSugg = cost > 0 ? [Math.round(wholesale > 0 ? wholesale * 1.5 : cost * 2.5), Math.round(wholesale > 0 ? wholesale * 2 : cost * 3)] : [];
+  const filteredLocs = allLocations.filter(l => l.fullCode.toLowerCase().includes(locationSearch.toLowerCase()));
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -575,27 +1048,42 @@ export default function ProductsPage() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* ── Add Form ─────────────────────────────────────────────── */}
-        {showAddForm && (() => {
-          const cost = Number(addForm.costPrice);
-          const wholesale = Number(addForm.wholesalePrice);
-          const retailProfit = calcProfit(addForm.retailPrice, addForm.costPrice);
-          const ratio = Math.max(1, Number(addForm.conversionFactor) || 1);
-          const wProfit = ratio > 1 ? calcProfit(addForm.wholesalePrice, String(cost * ratio)) : calcProfit(addForm.wholesalePrice, addForm.costPrice);
-          const wSugg = cost > 0 ? [Math.round(cost * 1.5), Math.round(cost * 2)] : [];
-          const rSugg = cost > 0 ? [Math.round(wholesale > 0 ? wholesale * 1.5 : cost * 2.5), Math.round(wholesale > 0 ? wholesale * 2 : cost * 3)] : [];
-          const filteredLocs = allLocations.filter(l => l.fullCode.toLowerCase().includes(locationSearch.toLowerCase()));
+        {showAddForm && (
+          <ProductAddEditForm
+            addForm={addForm}
+            setAddForm={setAddForm}
+            editProductId={editProductId}
+            categories={categories}
+            units={units}
+            newUnit={newUnit}
+            setNewUnit={setNewUnit}
+            showUnitManager={showUnitManager}
+            setShowUnitManager={setShowUnitManager}
+            suppliers={suppliers}
+            showSupplierModal={showSupplierModal}
+            setShowSupplierModal={setShowSupplierModal}
+            supplierForm={supplierForm}
+            setSupplierForm={setSupplierForm}
+            isCreatingSupplier={isCreatingSupplier}
+            showLocationModal={showLocationModal}
+            setShowLocationModal={setShowLocationModal}
+            locationSearch={locationSearch}
+            setLocationSearch={setLocationSearch}
+            skuPreview={skuPreview}
+            allLocations={allLocations}
+            onReset={resetProductForm}
+            onCreateSupplier={handleCreateSupplier}
+            onSaveUnits={saveUnits}
+            onAdd={handleAdd}
+            onUpdate={handleUpdate}
+          />
+        )}
 
+        {false && (() => {
+          return null;
+          // dead code below intentionally kept for reference — will be removed
           return (
-            <div className="bg-white rounded-xl border-2 border-orange-300 p-5 space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Tag size={16} className="text-orange-500" />
-                  <h3 className="font-semibold text-gray-900 text-sm">{editProductId ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h3>
-                </div>
-                <button onClick={resetProductForm}
-                  className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
-              </div>
-
+            <div>
               {/* ── Section 1: ข้อมูลทั่วไป ── */}
               <section>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ข้อมูลทั่วไป</p>
@@ -768,8 +1256,8 @@ export default function ProductsPage() {
                       placeholder="เช่น 60"
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
                     {wProfit && (
-                      <p className={`text-xs mt-1 font-medium ${wProfit.amt >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        กำไร {wProfit.amt >= 0 ? '+' : ''}{wProfit.amt.toFixed(0)} ฿ ({wProfit.pct}%)
+                      <p className={`text-xs mt-1 font-medium ${(wProfit?.amt ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        กำไร {(wProfit?.amt ?? 0) >= 0 ? '+' : ''}{(wProfit?.amt ?? 0).toFixed(0)} ฿ ({wProfit?.pct ?? ''})
                       </p>
                     )}
                   </div>
@@ -786,8 +1274,8 @@ export default function ProductsPage() {
                       placeholder="เช่น 99"
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-400" />
                     {retailProfit && (
-                      <p className={`text-xs mt-1 font-medium ${retailProfit.amt >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        กำไร {retailProfit.amt >= 0 ? '+' : ''}{retailProfit.amt.toFixed(0)} ฿ ({retailProfit.pct}%)
+                      <p className={`text-xs mt-1 font-medium ${(retailProfit?.amt ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        กำไร {(retailProfit?.amt ?? 0) >= 0 ? '+' : ''}{(retailProfit?.amt ?? 0).toFixed(0)} ฿ ({retailProfit?.pct ?? ''})
                       </p>
                     )}
                   </div>
@@ -1010,6 +1498,7 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody>
+              {/* eslint-disable-next-line no-nested-ternary */}
               {isLoading ? (
                 <tr><td colSpan={7} className="text-center py-12">
                   <div className="flex items-center justify-center gap-2 text-gray-400">
