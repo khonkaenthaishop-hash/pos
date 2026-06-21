@@ -7,7 +7,7 @@ import { Product } from './product.entity';
 import { ProductLocation } from './product-location.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit-log.entity';
-import { UserRole } from '../users/user.entity';
+import { User, UserRole } from '../users/user.entity';
 import { InventoryMovement, MovementType } from '../inventory/inventory-movement.entity';
 
 @Injectable()
@@ -81,8 +81,8 @@ export class ProductsService {
 
     const allowPack = opts?.mode === 'inventory' || opts?.mode === 'any';
     const where = allowPack
-      ? [{ barcode: code, isActive: true } as any, { packBarcode: code, isActive: true } as any]
-      : [{ barcode: code, isActive: true } as any];
+      ? [{ barcode: code, isActive: true }, { packBarcode: code, isActive: true }]
+      : [{ barcode: code, isActive: true }];
 
     const product = await this.productsRepo.findOne({
       where,
@@ -90,12 +90,12 @@ export class ProductsService {
     });
     if (!product) return null;
 
-    const isPack = allowPack && this.normalizeOptionalString((product as any).packBarcode) === code;
+    const isPack = allowPack && this.normalizeOptionalString(product.packBarcode) === code;
     const kind: 'unit' | 'pack' = isPack ? 'pack' : 'unit';
     const unit = isPack ? (product.wholesaleUnit || product.unit) : product.unit;
     const ratio = isPack ? Math.max(1, Number(product.conversionFactor) || 1) : 1;
-    (product as any).scan = { kind, unit, ratio, barcode: code };
-    return product as any;
+    const scan = { kind, unit, ratio, barcode: code };
+    return Object.assign(product, { scan });
   }
 
   async findById(id: string): Promise<Product> {
@@ -115,23 +115,23 @@ export class ProductsService {
   }
 
   async create(dto: Partial<Product>, createdById: string, role: UserRole): Promise<Product> {
-    (dto as any).barcode = this.normalizeOptionalString((dto as any).barcode);
-    (dto as any).packBarcode = this.normalizeOptionalString((dto as any).packBarcode);
-    (dto as any).sku = this.normalizeOptionalString((dto as any).sku);
-    (dto as any).wholesaleUnit = this.normalizeOptionalString((dto as any).wholesaleUnit);
+    dto.barcode = this.normalizeOptionalString(dto.barcode) ?? undefined;
+    dto.packBarcode = this.normalizeOptionalString(dto.packBarcode) ?? undefined;
+    dto.sku = this.normalizeOptionalString(dto.sku) ?? undefined;
+    dto.wholesaleUnit = this.normalizeOptionalString(dto.wholesaleUnit) ?? undefined;
 
-    if ((dto as any).packBarcode) {
-      const ratio = Number((dto as any).conversionFactor ?? 1);
+    if (dto.packBarcode) {
+      const ratio = Number(dto.conversionFactor ?? 1);
       if (!Number.isFinite(ratio) || ratio <= 1) {
         throw new BadRequestException('Conversion Ratio ต้องมากกว่า 1 เมื่อระบุ Pack Barcode');
       }
-      if (!(dto as any).wholesaleUnit) {
+      if (!dto.wholesaleUnit) {
         throw new BadRequestException('กรุณาระบุหน่วยแพ็ค (wholesaleUnit) เมื่อระบุ Pack Barcode');
       }
-      if ((dto as any).wholesalePrice == null || Number((dto as any).wholesalePrice) <= 0) {
+      if (dto.wholesalePrice == null || Number(dto.wholesalePrice) <= 0) {
         throw new BadRequestException('กรุณาระบุราคายกแพ็ค (wholesalePrice) เมื่อระบุ Pack Barcode');
       }
-      if ((dto as any).barcode && (dto as any).barcode === (dto as any).packBarcode) {
+      if (dto.barcode && dto.barcode === dto.packBarcode) {
         throw new BadRequestException('Barcode (Unit) และ Barcode (Pack) ต้องไม่ซ้ำกัน');
       }
     }
@@ -140,7 +140,7 @@ export class ProductsService {
     const product = this.productsRepo.create({
       ...dto,
       sku,
-      createdBy: { id: createdById } as any,
+      createdBy: { id: createdById } as unknown as User,
       isApproved: [UserRole.OWNER, UserRole.MANAGER].includes(role),
     });
     const saved = await this.productsRepo.save(product);
@@ -156,32 +156,36 @@ export class ProductsService {
 
   async update(
     id: string,
-    dto: Partial<Pick<Product, 'nameTh' | 'nameZh' | 'nameEn' | 'barcode' | 'categoryId' | 'unit' | 'minStock' | 'temperatureType' | 'descriptionTh'>>,
+    dto: Partial<Pick<Product,
+      | 'nameTh' | 'nameZh' | 'nameEn' | 'barcode' | 'categoryId' | 'unit' | 'minStock'
+      | 'temperatureType' | 'descriptionTh' | 'packBarcode' | 'sku' | 'wholesaleUnit'
+      | 'conversionFactor' | 'wholesalePrice'
+    >>,
     userId: string,
   ): Promise<Product> {
     const product = await this.findById(id);
     if (dto && typeof dto === 'object') {
-      (dto as any).barcode = this.normalizeOptionalString((dto as any).barcode);
-      (dto as any).packBarcode = this.normalizeOptionalString((dto as any).packBarcode);
-      (dto as any).sku = this.normalizeOptionalString((dto as any).sku);
-      (dto as any).wholesaleUnit = this.normalizeOptionalString((dto as any).wholesaleUnit);
+      dto.barcode = this.normalizeOptionalString(dto.barcode as string | undefined) ?? undefined;
+      dto.packBarcode = this.normalizeOptionalString(dto.packBarcode as string | undefined) ?? undefined;
+      dto.sku = this.normalizeOptionalString(dto.sku as string | undefined) ?? undefined;
+      dto.wholesaleUnit = this.normalizeOptionalString(dto.wholesaleUnit as string | undefined) ?? undefined;
     }
 
-    const nextPackBarcode = (dto as any).packBarcode ?? product.packBarcode;
+    const nextPackBarcode = dto.packBarcode ?? product.packBarcode;
     if (nextPackBarcode) {
-      const nextWholesaleUnit = (dto as any).wholesaleUnit ?? product.wholesaleUnit;
-      const nextRatio = (dto as any).conversionFactor != null ? Number((dto as any).conversionFactor) : Number(product.conversionFactor);
+      const nextWholesaleUnit = dto.wholesaleUnit ?? product.wholesaleUnit;
+      const nextRatio = dto.conversionFactor != null ? Number(dto.conversionFactor) : Number(product.conversionFactor);
       if (!nextWholesaleUnit) {
         throw new BadRequestException('กรุณาระบุหน่วยแพ็ค (wholesaleUnit) เมื่อระบุ Pack Barcode');
       }
       if (!Number.isFinite(nextRatio) || nextRatio <= 1) {
         throw new BadRequestException('Conversion Ratio ต้องมากกว่า 1 เมื่อระบุ Pack Barcode');
       }
-      const nextWholesalePrice = (dto as any).wholesalePrice ?? product.wholesalePrice;
+      const nextWholesalePrice = dto.wholesalePrice ?? product.wholesalePrice;
       if (nextWholesalePrice == null || Number(nextWholesalePrice) <= 0) {
         throw new BadRequestException('กรุณาระบุราคายกแพ็ค (wholesalePrice) เมื่อระบุ Pack Barcode');
       }
-      const nextUnitBarcode = (dto as any).barcode ?? product.barcode;
+      const nextUnitBarcode = dto.barcode ?? product.barcode;
       if (nextUnitBarcode && nextUnitBarcode === nextPackBarcode) {
         throw new BadRequestException('Barcode (Unit) และ Barcode (Pack) ต้องไม่ซ้ำกัน');
       }
@@ -228,7 +232,7 @@ export class ProductsService {
     const product = await this.findById(id);
     if (product.isApproved) throw new BadRequestException('อนุมัติแล้ว');
     product.isApproved = true;
-    product.approvedBy = { id: approverId } as any;
+    product.approvedBy = { id: approverId } as unknown as User;
     product.approvedAt = new Date();
     await this.productsRepo.save(product);
     await this.auditService.log({

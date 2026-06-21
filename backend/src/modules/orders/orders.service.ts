@@ -11,6 +11,9 @@ import {
   OrderType,
   OrderStatus,
   PaymentMethod,
+  CarrierName,
+  TemperatureType,
+  PackageSize,
 } from './order.entity';
 import { Product } from '../products/product.entity';
 import { ProductsService } from '../products/products.service';
@@ -326,9 +329,9 @@ export class OrdersService {
         shippingFee: dto.shippingFee,
         totalAmount,
         paymentMethod: dto.paymentMethod,
-        carrier: dto.carrier as any,
-        temperature: (dto.temperature as any) || 'normal',
-        packageSize: dto.packageSize as any,
+        carrier: dto.carrier as CarrierName | undefined,
+        temperature: (dto.temperature as TemperatureType | undefined) || TemperatureType.NORMAL,
+        packageSize: dto.packageSize as PackageSize | undefined,
         cashierId: adminId,
         note: dto.note,
         items: dto.items.map((i) => {
