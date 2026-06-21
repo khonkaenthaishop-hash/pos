@@ -39,22 +39,22 @@ export class ShippingEmail {
   receivedAt: Date;
 
   // ─── Parsed from email body ─────────────────────────────────────
-  @Column({ name: 'cm_order_number', length: 50, nullable: true })
+  @Column({ type: 'varchar', name: 'cm_order_number', length: 50, nullable: true })
   cmOrderNumber: string | null;
 
-  @Column({ name: 'c_number', length: 50, nullable: true })
+  @Column({ type: 'varchar', name: 'c_number', length: 50, nullable: true })
   cNumber: string | null;
 
   @Column({ name: 'order_date', type: 'date', nullable: true })
   orderDate: string | null;
 
-  @Column({ name: 'phone_last3', length: 3, nullable: true })
+  @Column({ type: 'varchar', name: 'phone_last3', length: 3, nullable: true })
   phoneLast3: string | null;
 
-  @Column({ name: 'payment_method', length: 30, nullable: true })
+  @Column({ type: 'varchar', name: 'payment_method', length: 30, nullable: true })
   paymentMethod: string | null;
 
-  @Column({ name: 'delivery_method', length: 100, nullable: true })
+  @Column({ type: 'varchar', name: 'delivery_method', length: 100, nullable: true })
   deliveryMethod: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
@@ -67,7 +67,7 @@ export class ShippingEmail {
   totalAmount: number | null;
 
   // ─── Match result ───────────────────────────────────────────────
-  @Column({ name: 'matched_order_id', nullable: true })
+  @Column({ type: 'uuid', name: 'matched_order_id', nullable: true })
   matchedOrderId: string | null;
 
   @ManyToOne(() => Order, { nullable: true })
@@ -87,7 +87,7 @@ export class ShippingEmail {
   @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
   confirmedAt: Date | null;
 
-  @Column({ name: 'confirmed_by', nullable: true })
+  @Column({ type: 'uuid', name: 'confirmed_by', nullable: true })
   confirmedById: string | null;
 
   @ManyToOne(() => User, { nullable: true })

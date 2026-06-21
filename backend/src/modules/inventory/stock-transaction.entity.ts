@@ -56,13 +56,13 @@ export class StockTransaction {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   quantity: number;
 
-  @Column({ nullable: true, length: 50 })
+  @Column({ type: 'varchar', nullable: true, length: 50 })
   unit: string | null;
 
   @Column({ name: 'cost_price', type: 'decimal', precision: 10, scale: 4, nullable: true })
   costPrice: number | null;
 
-  @Column({ name: 'reference_no', nullable: true, length: 100 })
+  @Column({ type: 'varchar', name: 'reference_no', nullable: true, length: 100 })
   referenceNo: string | null;
 
   @Column({ nullable: true, type: 'text' })
@@ -71,17 +71,17 @@ export class StockTransaction {
   @Column({ name: 'balance_after', type: 'decimal', precision: 12, scale: 2, nullable: true })
   balanceAfter: number | null;
 
-  @Column({ name: 'user_id', nullable: true })
+  @Column({ type: 'uuid', name: 'user_id', nullable: true })
   userId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
   user: User | null;
 
-  @Column({ name: 'location_id', nullable: true })
+  @Column({ type: 'int', name: 'location_id', nullable: true })
   locationId: number | null;
 
-  @Column({ name: 'supplier_id', nullable: true })
+  @Column({ type: 'uuid', name: 'supplier_id', nullable: true })
   supplierId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

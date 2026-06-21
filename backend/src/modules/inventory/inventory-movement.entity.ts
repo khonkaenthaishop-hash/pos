@@ -39,10 +39,10 @@ export class InventoryMovement {
   @Column({ name: 'quantity_base', type: 'decimal', precision: 12, scale: 2 })
   quantityBase: number;
 
-  @Column({ name: 'unit_input', nullable: true, length: 50 })
+  @Column({ name: 'unit_input', type: 'varchar', nullable: true, length: 50 })
   unitInput: string | null;
 
-  @Column({ name: 'unit_base', nullable: true, length: 50 })
+  @Column({ name: 'unit_base', type: 'varchar', nullable: true, length: 50 })
   unitBase: string | null;
 
   // ── Financials ─────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export class InventoryMovement {
   costPrice: number | null;
 
   // ── Reference ──────────────────────────────────────────────────
-  @Column({ name: 'reference_no', nullable: true, length: 100 })
+  @Column({ name: 'reference_no', type: 'varchar', nullable: true, length: 100 })
   referenceNo: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -64,14 +64,14 @@ export class InventoryMovement {
   balanceAfter: number;
 
   // ── Who / when ─────────────────────────────────────────────────
-  @Column({ name: 'user_id', nullable: true })
+  @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
   user: User | null;
 
-  @Column({ name: 'supplier_id', nullable: true })
+  @Column({ name: 'supplier_id', type: 'uuid', nullable: true })
   supplierId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -78,8 +78,8 @@ export class ShippingEmailParserService {
     // Look for 訂單日期 field followed by a date value
     // Common formats: 2026/06/17 or 2026-06-17
     const patterns = [
-      /訂單日期[^\d]*(\d{4})[\/\-](\d{2})[\/\-](\d{2})/,
-      /訂購日期[^\d]*(\d{4})[\/\-](\d{2})[\/\-](\d{2})/,
+      /訂單日期[^\d]*(\d{4})[/-](\d{2})[/-](\d{2})/,
+      /訂購日期[^\d]*(\d{4})[/-](\d{2})[/-](\d{2})/,
     ];
     for (const pattern of patterns) {
       const match = body.match(pattern);

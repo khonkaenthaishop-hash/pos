@@ -23,24 +23,24 @@ export class HeldOrder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true, length: 100 })
+  @Column({ type: 'varchar', nullable: true, length: 100 })
   label: string | null;
 
-  @Column({ name: 'cashier_id', nullable: true })
+  @Column({ type: 'uuid', name: 'cashier_id', nullable: true })
   cashierId: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'cashier_id' })
   cashier: User | null;
 
-  @Column({ name: 'customer_id', nullable: true })
+  @Column({ type: 'uuid', name: 'customer_id', nullable: true })
   customerId: string | null;
 
   @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customer_id' })
   customer: Customer | null;
 
-  @Column({ name: 'customer_name', nullable: true, length: 200 })
+  @Column({ type: 'varchar', name: 'customer_name', nullable: true, length: 200 })
   customerName: string | null;
 
   @Column({ type: 'jsonb', default: [] })

@@ -27,10 +27,10 @@ export class ShippingTracking {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @Column({ name: 'cm_order_number', length: 50, nullable: true, unique: true })
+  @Column({ type: 'varchar', name: 'cm_order_number', length: 50, nullable: true, unique: true })
   cmOrderNumber: string | null;
 
-  @Column({ name: 'c_number', length: 50, nullable: true })
+  @Column({ type: 'varchar', name: 'c_number', length: 50, nullable: true })
   cNumber: string | null;
 
   @Column({ length: 30, default: 'seven_eleven' })
