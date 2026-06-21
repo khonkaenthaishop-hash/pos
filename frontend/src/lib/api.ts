@@ -1,66 +1,10 @@
 import axios from "axios";
-import { signOut } from "next-auth/react";
 
 const api = axios.create({
   baseURL:
     (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001") + "/api/v1",
   timeout: 15000,
 });
-
-// In-memory token cache — fetched from server-side /api/auth/token (ไม่ผ่าน client session)
-let cachedToken: string | null = null;
-let lastFetchMs = 0;
-const CACHE_MS = 5_000;
-
-async function getAccessToken(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
-
-  const now = Date.now();
-  if (cachedToken && now - lastFetchMs < CACHE_MS) {
-    return cachedToken;
-  }
-
-  try {
-    const res = await fetch("/api/auth/token");
-    if (!res.ok) {
-      cachedToken = null;
-      return null;
-    }
-    const data = await res.json();
-    cachedToken = data.token ?? null;
-    lastFetchMs = now;
-    return cachedToken;
-  } catch {
-    return null;
-  }
-}
-
-export function clearTokenCache() {
-  cachedToken = null;
-  lastFetchMs = 0;
-}
-
-// Request interceptor — แนบ token
-api.interceptors.request.use(async (config) => {
-  const token = await getAccessToken();
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor — จัดการ 401
-api.interceptors.response.use(
-  (res) => res,
-  async (err) => {
-    if (err.response?.status === 401 && typeof window !== "undefined") {
-      clearTokenCache();
-      await signOut({ callbackUrl: "/login", redirect: true });
-    }
-    return Promise.reject(err);
-  },
-);
 
 // ── Auth ─────────────────────────────────────────────────────────
 export const authApi = {

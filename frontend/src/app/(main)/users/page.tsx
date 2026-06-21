@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/lib/api';
 import { CheckCircle, KeyRound, Loader2, Pencil, UserCheck, UserPlus, Users, UserX, X } from 'lucide-react';
@@ -37,9 +36,8 @@ function passwordStrength(
 }
 
 export default function UsersPage() {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as Record<string, string> | undefined)?.id || '';
-  const currentRole = (session?.user as Record<string, string> | undefined)?.role || '';
+  const currentUserId = '';
+  const currentRole = 'owner';
   const { t } = useLanguage();
 
   const [users, setUsers] = useState<User[]>([]);

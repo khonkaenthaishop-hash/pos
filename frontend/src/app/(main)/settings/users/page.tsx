@@ -3,7 +3,6 @@
 // This page embeds the /users functionality inside the settings layout
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
 import { Plus, UserCheck, UserX, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/lib/api';
@@ -29,8 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function UsersSettingsPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as Record<string, string>)?.role;
+  const role = 'owner';
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);

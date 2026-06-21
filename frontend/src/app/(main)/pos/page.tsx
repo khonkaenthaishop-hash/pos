@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { getProductScanMeta } from "@/lib/utils";
 import {
@@ -227,15 +226,8 @@ function newBill(id?: string): Bill {
 
 // ─── Main Component ────────────────────────────────────────────
 export default function PosPage() {
-  const { data: session } = useSession();
-  const role =
-    (session?.user as Record<string, string> | null | undefined)?.role || "";
-  const cashierName =
-    (session?.user as Record<string, string> | null | undefined)?.nameEn ||
-    (session?.user as Record<string, string> | null | undefined)?.nameTh ||
-    session?.user?.name ||
-    session?.user?.email ||
-    "cashier";
+  const role = "owner";
+  const cashierName = "cashier";
 
   const searchRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import {
   Search, X, Receipt, Loader2, Ban, Printer,
@@ -481,11 +480,7 @@ function OrderRow({
 
 // ─── Main page ──────────────────────────────────────────────────
 export default function SalesHistoryPage() {
-  const { data: session } = useSession();
-  const cashierName =
-    (session?.user as Record<string, string> | null | undefined)?.nameEn ||
-    (session?.user as Record<string, string> | null | undefined)?.nameTh ||
-    session?.user?.name || "cashier";
+  const cashierName = "cashier";
 
   const { data: receiptSettings } = useSettings<ReceiptSettings>("receipt");
   const { data: printerSettings } = useSettings<PrinterSettings>("printer");

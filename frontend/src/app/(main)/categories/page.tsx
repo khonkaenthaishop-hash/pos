@@ -2,7 +2,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { categoriesApi } from '@/lib/api';
-import { useSession } from 'next-auth/react';
 import { FolderPlus, Loader2, Tag, Search, Pencil, Trash2, Check, X } from 'lucide-react';
 
 type Category = {
@@ -25,8 +24,7 @@ const CATEGORY_TYPES = [
 const emptyForm = { nameTh: '', nameZh: '', nameEn: '', icon: '', sortOrder: '0', type: 'product', isActive: true };
 
 export default function CategoriesPage() {
-  const { data: session } = useSession();
-  const isOwner = (session?.user as Record<string, string> | null | undefined)?.role === 'owner';
+  const isOwner = true;
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);

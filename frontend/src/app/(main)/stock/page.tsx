@@ -1,7 +1,6 @@
 'use client';
 import { Fragment, useState, useEffect } from 'react';
 import { productsApi, categoriesApi } from '@/lib/api';
-import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import {
   Package, AlertTriangle, XCircle, Minus, Plus, Search,
@@ -20,8 +19,7 @@ const emptyAddForm = {
 };
 
 export default function StockPage() {
-  const { data: session } = useSession();
-  const isOwner = (session?.user as Record<string, string> | null | undefined)?.role === 'owner';
+  const isOwner = true;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

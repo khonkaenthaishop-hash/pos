@@ -1,8 +1,6 @@
 'use client';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { SettingsPageShell } from '@/components/settings/SettingsPageShell';
 import { SettingSection, FieldRow } from '@/components/settings/SettingSection';
 import { SaveBar } from '@/components/settings/SaveBar';
@@ -31,14 +29,6 @@ const DEFAULTS: GeneralSettings = {
 };
 
 export default function GeneralSettingsPage() {
-  const { data: session } = useSession();
-  const router = useRouter();
-  const role = (session?.user as Record<string, string>)?.role;
-
-  useEffect(() => {
-    if (session && role !== 'owner' && role !== 'manager') router.replace('/settings/general');
-  }, [session, role, router]);
-
   const { data, isLoading, save } = useSettings<GeneralSettings>('general');
   const { register, handleSubmit, reset, formState: { isDirty, isSubmitting } } = useForm<GeneralSettings>({
     defaultValues: DEFAULTS,

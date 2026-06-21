@@ -1,12 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
-import { clearTokenCache } from '@/lib/api';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingCart, Package, Tag,
-  Warehouse, BarChart2, Shield, LogOut, Truck, Users, Layers,
+  Warehouse, BarChart2, Shield, Truck, Users, Layers,
   PackagePlus, ClipboardList, Trash2, Settings, Menu, X, ChevronLeft, History,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -18,27 +16,25 @@ const NAV: Array<{
   href: string;
   labelKey: string;
   icon: LucideIcon;
-  roles?: string[];
 }> = [
   { href: '/dashboard',           labelKey: 'nav.dashboard',     icon: LayoutDashboard },
   { href: '/pos',                 labelKey: 'nav.pos',           icon: ShoppingCart },
   { href: '/sales-history',       labelKey: 'nav.salesHistory',  icon: History },
   { href: '/online-orders',       labelKey: 'nav.onlineOrders',  icon: Package },
   { href: '/products',            labelKey: 'nav.products',      icon: Tag },
-  { href: '/categories',          labelKey: 'nav.categories',    icon: Layers,        roles: ['owner', 'manager'] },
+  { href: '/categories',          labelKey: 'nav.categories',    icon: Layers },
   { href: '/stock',               labelKey: 'nav.stock',         icon: Warehouse },
-  { href: '/inventory/receive',   labelKey: 'nav.receive',       icon: PackagePlus,   roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/adjust',    labelKey: 'nav.adjust',        icon: ClipboardList, roles: ['owner', 'manager', 'staff'] },
-  { href: '/inventory/discard',   labelKey: 'nav.discard',       icon: Trash2,        roles: ['owner', 'manager'] },
-  { href: '/shipments',           labelKey: 'nav.shipments',     icon: Truck,         roles: ['owner', 'manager', 'admin'] },
-  { href: '/customers',           labelKey: 'nav.customers',     icon: Users,         roles: ['owner', 'manager', 'admin'] },
-  { href: '/users',               labelKey: 'nav.users',         icon: Users,         roles: ['owner', 'manager'] },
+  { href: '/inventory/receive',   labelKey: 'nav.receive',       icon: PackagePlus },
+  { href: '/inventory/adjust',    labelKey: 'nav.adjust',        icon: ClipboardList },
+  { href: '/inventory/discard',   labelKey: 'nav.discard',       icon: Trash2 },
+  { href: '/shipments',           labelKey: 'nav.shipments',     icon: Truck },
+  { href: '/customers',           labelKey: 'nav.customers',     icon: Users },
+  { href: '/users',               labelKey: 'nav.users',         icon: Users },
   { href: '/audit',               labelKey: 'nav.audit',         icon: Shield },
   { href: '/reports',             labelKey: 'nav.reports',       icon: BarChart2 },
-  { href: '/settings',            labelKey: 'nav.settings',      icon: Settings,      roles: ['owner', 'manager'] },
+  { href: '/settings',            labelKey: 'nav.settings',      icon: Settings },
 ];
 
-// Bottom nav — mobile only
 const BOTTOM_NAV = [
   { href: '/dashboard', labelKey: 'bottom.home',     icon: LayoutDashboard },
   { href: '/pos',       labelKey: 'bottom.pos',      icon: ShoppingCart },
@@ -49,35 +45,13 @@ const BOTTOM_NAV = [
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { data: session, status } = useSession();
   const { lang, toggleLang, t } = useLanguage();
 
-  // mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
-  // desktop collapsed (icon-only)
   const [collapsed, setCollapsed] = useState(false);
-
-  const user = session?.user;
-  const role = (user as Record<string, string> | null | undefined)?.role || '';
-  const initials = (user?.name || user?.email || 'U').slice(0, 1).toUpperCase();
-
-  // Close mobile drawer on route change
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    if (status === 'loading') return;
-    if (status === 'unauthenticated') {
-      clearTokenCache();
-      router.replace('/login');
-    }
-  }, [status, router]);
-
-  const filteredNav = NAV.filter(i => !i.roles || (role && i.roles.includes(role)));
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
@@ -85,17 +59,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         />
       )}
 
-      {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside className={cn(
         'fixed inset-y-0 left-0 z-40 bg-slate-900 flex flex-col shrink-0 transition-all duration-200',
-        // mobile: drawer behaviour
         'lg:static',
         mobileOpen ? 'translate-x-0 w-56' : '-translate-x-full w-56',
-        // desktop: collapsed ↔ expanded
         'lg:translate-x-0',
         collapsed ? 'lg:w-14' : 'lg:w-56',
       )}>
-        {/* Logo / collapse button */}
         <div className="px-3 py-4 border-b border-slate-800 flex items-center justify-between min-h-15">
           {!collapsed && (
             <div className="flex-1 min-w-0 pl-1">
@@ -103,7 +73,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <div className="text-slate-400 text-xs mt-0.5">POS System</div>
             </div>
           )}
-          {/* Desktop collapse toggle */}
           <button
             onClick={() => setCollapsed(c => !c)}
             className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors shrink-0"
@@ -111,7 +80,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           >
             {collapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
           </button>
-          {/* Mobile close button */}
           <button
             onClick={() => setMobileOpen(false)}
             className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
@@ -120,9 +88,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </button>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {filteredNav.map(({ href, labelKey, icon: Icon }) => {
+          {NAV.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             const label = t(labelKey);
             return (
@@ -145,47 +112,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        {/* User */}
         <div className="border-t border-slate-800 p-2">
           <div className={cn('flex items-center gap-2.5 px-1 py-2', collapsed && 'justify-center')}>
-            <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {initials}
-            </div>
             {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="text-white text-xs font-medium truncate">
-                  {(user as Record<string, string> | null | undefined)?.nameTh || user?.name || user?.email}
-                </div>
-                <div className="text-slate-500 text-xs capitalize">
-                  {(user as Record<string, string> | null | undefined)?.role || 'user'}
-                </div>
-              </div>
-            )}
-            {!collapsed && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleLang}
-                  className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold"
-                  title={t('common.language')}
-                >
-                  {LANG_LABEL[lang]}
-                </button>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="text-slate-500 hover:text-red-400 transition-colors"
-                  title={t('common.logout')}
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
+              <button
+                onClick={toggleLang}
+                className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold"
+                title={t('common.language')}
+              >
+                {LANG_LABEL[lang]}
+              </button>
             )}
           </div>
         </div>
       </aside>
 
-      {/* ── Main content ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
           <button
             onClick={() => setMobileOpen(true)}
@@ -205,12 +147,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
         <main className="flex-1 overflow-hidden pb-16 lg:pb-0">{children}</main>
 
-        {/* Bottom nav — mobile only */}
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 flex">
-          {BOTTOM_NAV.filter(i => {
-            if (i.href === '/settings' && role && !['owner', 'manager'].includes(role)) return false;
-            return true;
-          }).map(({ href, labelKey, icon: Icon }) => {
+          {BOTTOM_NAV.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link

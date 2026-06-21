@@ -1,3 +1,8 @@
-import { handlers } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 
-export const { GET, POST } = handlers;
+export async function GET() {
+  return NextResponse.json({ error: 'Auth removed' }, { status: 404 });
+}
+export async function POST() {
+  return NextResponse.json({ error: 'Auth removed' }, { status: 404 });
+}

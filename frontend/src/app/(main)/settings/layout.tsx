@@ -2,7 +2,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import {
   Store, Receipt, Printer, Users, ShieldCheck,
@@ -61,9 +60,7 @@ const NAV_GROUPS = [
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const role = (session?.user as Record<string, string> | null)?.role ?? '';
-  const isOwner = role === 'owner';
+  const isOwner = true;
 
   return (
     <div className="flex h-full overflow-hidden">

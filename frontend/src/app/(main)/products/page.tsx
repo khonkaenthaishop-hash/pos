@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, Fragment, startTransition } from 'react';
 import { productsApi, categoriesApi, locationsApi, inventoryApi } from '@/lib/api';
-import { useSession } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { Search, Plus, Check, Clock, Loader2, Tag, ChevronDown, MapPin, X, Building2, Pencil, Zap } from 'lucide-react';
 import ImageUploader from '@/components/ImageUploader';
@@ -42,8 +41,7 @@ function previewAutoSku() {
 }
 
 export default function ProductsPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as Record<string, string> | null | undefined)?.role || '';
+  const role = 'owner';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
