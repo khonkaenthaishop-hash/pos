@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './roles.decorator';
@@ -14,6 +15,8 @@ import { UserRole } from '../users/user.entity';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  // 5 attempts per minute per IP — ป้องกัน brute force
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
   async login(@Body() dto: { username: string; password: string }) {
     const user = await this.authService.validateUser(dto.username, dto.password);

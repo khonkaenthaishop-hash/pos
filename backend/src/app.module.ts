@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProductsModule } from './modules/products/products.module';
@@ -28,6 +30,9 @@ import { GmailShippingModule } from './modules/gmail-shipping/gmail-shipping.mod
 
     // Task scheduling (required by GmailShippingModule cron jobs)
     ScheduleModule.forRoot(),
+
+    // Rate limiting (default: 100 req/min — overridden per endpoint as needed)
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
 
     // Database
     TypeOrmModule.forRootAsync({
@@ -59,6 +64,10 @@ import { GmailShippingModule } from './modules/gmail-shipping/gmail-shipping.mod
     HeldOrdersModule,
     SettingsModule,
     GmailShippingModule,
+  ],
+  providers: [
+    // Apply ThrottlerGuard globally — individual endpoints override with @Throttle()
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
