@@ -14,10 +14,15 @@ export interface GmailMessage {
   receivedAt: Date;
 }
 
+/** Store ID ใช้ระบุ row ของ gmail_credentials (ระบบรองรับ single store) */
+const GMAIL_STORE_ID = 'default';
+
+/** ที่อยู่อีเมลผู้ส่งจาก SP88 ที่ใช้กรอง inbox สำหรับ shipping notifications */
+const SP88_SENDER_EMAIL = 'no-reply@sp88.com';
+
 @Injectable()
 export class GmailService {
   private readonly logger = new Logger(GmailService.name);
-  private readonly STORE_ID = 'default';
 
   constructor(
     @InjectRepository(GmailCredential)
@@ -66,7 +71,7 @@ export class GmailService {
       : new Date(Date.now() + 3600 * 1000);
 
     // Upsert — one credential per store
-    const existing = await this.credentialRepo.findOne({ where: { storeId: this.STORE_ID } });
+    const existing = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
 
     if (existing) {
       await this.credentialRepo.update(existing.id, {
@@ -78,7 +83,7 @@ export class GmailService {
       });
     } else {
       const credential = this.credentialRepo.create({
-        storeId: this.STORE_ID,
+        storeId: GMAIL_STORE_ID,
         emailAddress,
         accessToken: encrypt(tokens.access_token),
         refreshToken: encrypt(tokens.refresh_token),
@@ -92,7 +97,7 @@ export class GmailService {
   }
 
   private async getAuthenticatedClient(): Promise<{ client: OAuth2Client; credential: GmailCredential }> {
-    const credential = await this.credentialRepo.findOne({ where: { storeId: this.STORE_ID } });
+    const credential = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
     if (!credential) {
       throw new NotFoundException('Gmail not connected. Please connect Gmail first.');
     }
@@ -133,7 +138,7 @@ export class GmailService {
     const gmail = google.gmail({ version: 'v1', auth: client });
 
     // Build query: from sp88, after last sync
-    let query = 'from:no-reply@sp88.com';
+    let query = `from:${SP88_SENDER_EMAIL}`;
     if (credential.lastSyncAt) {
       const unixTimestamp = Math.floor(credential.lastSyncAt.getTime() / 1000);
       query += ` after:${unixTimestamp}`;
@@ -222,7 +227,7 @@ export class GmailService {
   }
 
   async disconnectGmail(): Promise<void> {
-    const credential = await this.credentialRepo.findOne({ where: { storeId: this.STORE_ID } });
+    const credential = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
     if (!credential) {
       throw new NotFoundException('Gmail is not connected');
     }
@@ -231,7 +236,7 @@ export class GmailService {
   }
 
   async getConnectionStatus(): Promise<{ connected: boolean; email?: string; lastSyncAt?: Date }> {
-    const credential = await this.credentialRepo.findOne({ where: { storeId: this.STORE_ID } });
+    const credential = await this.credentialRepo.findOne({ where: { storeId: GMAIL_STORE_ID } });
     if (!credential) {
       return { connected: false };
     }

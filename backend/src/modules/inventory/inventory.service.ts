@@ -26,6 +26,9 @@ import { Product } from "../products/product.entity";
 import { ProductLocation } from "../products/product-location.entity";
 import { Location } from "../products/location.entity";
 
+/** Location code เริ่มต้นเมื่อสินค้าไม่ได้กำหนด locationCode (ใช้ชั้นวางหน้าร้านเป็น fallback) */
+const DEFAULT_LOCATION_CODE = 'FRONT';
+
 export class ReceiveDto {
   @IsUUID()
   @IsNotEmpty()
@@ -190,7 +193,7 @@ export class InventoryService {
         order: { priority: "ASC" },
         lock: { mode: "pessimistic_write" },
       });
-      const fallbackCode = (product.locationCode || "FRONT").trim() || "FRONT";
+      const fallbackCode = (product.locationCode || DEFAULT_LOCATION_CODE).trim() || DEFAULT_LOCATION_CODE;
       let fallbackLoc = await manager.findOne(Location, {
         where: { fullCode: fallbackCode },
       });

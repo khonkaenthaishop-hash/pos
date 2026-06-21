@@ -11,6 +11,7 @@ const MASKED_FIELDS: Record<string, string[]> = {
   ai: ['apiKey'],
 };
 
+/** Store ID ใช้ระบุ row ของ store_settings และ warehouses (ระบบรองรับ single store) */
 const STORE_ID = 'default';
 
 @Injectable()
