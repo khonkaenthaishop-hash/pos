@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
-import { OrdersService } from "./orders.service";
+import { OrdersService, CreateOnlineOrderDto } from "./orders.service";
 import { CreatePosOrderDto } from "./dto/create-pos-order.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
@@ -92,7 +92,7 @@ export class OrdersController {
 
   @Post("online")
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
-  createOnline(@Body() dto: any, @CurrentUser() user: any) {
+  createOnline(@Body() dto: CreateOnlineOrderDto, @CurrentUser() user: any) {
     return this.ordersService.createOnlineOrder(dto, user.id);
   }
 
