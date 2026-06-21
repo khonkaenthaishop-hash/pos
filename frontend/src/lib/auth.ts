@@ -1,8 +1,6 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
-// ใช้ INTERNAL_API_URL สำหรับ server-side (Docker: http://backend:3001)
-// ใช้ NEXT_PUBLIC_API_URL เป็น fallback สำหรับ local dev
 const BACKEND_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
@@ -31,7 +29,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const data = await res.json();
           const { access_token, user } = data;
           if (!access_token) return null;
-          return { ...user, accessToken: access_token };
+          // เก็บ token ใน User object ชั่วคราวเพื่อส่งต่อให้ JWT callback เท่านั้น
+          return { ...user, _token: access_token };
         } catch (err) {
           console.error('[NextAuth] authorize error:', err);
           return null;
@@ -42,14 +41,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = (user as Record<string, unknown>).accessToken as string;
+        // เก็บ token ใน JWT (encrypted httpOnly cookie — ไม่เปิดเผยฝั่ง client)
+        token._token = (user as Record<string, unknown>)._token as string;
         token.role = (user as Record<string, unknown>).role as string;
         token.nameTh = (user as Record<string, unknown>).nameTh as string;
       }
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken as string;
+      // session ที่ client เห็นได้ — ไม่มี token
       if (session.user) {
         session.user.role = token.role as string;
         session.user.nameTh = token.nameTh as string;

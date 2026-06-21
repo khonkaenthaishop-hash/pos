@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
+import { clearTokenCache } from '@/lib/api';
 import {
   LayoutDashboard, ShoppingCart, Package, Tag,
   Warehouse, BarChart2, Shield, LogOut, Truck, Users, Layers,
@@ -57,7 +58,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   // desktop collapsed (icon-only)
   const [collapsed, setCollapsed] = useState(false);
 
-  const accessToken = (session as Record<string, unknown> | null)?.accessToken as string | undefined;
   const user = session?.user;
   const role = (user as Record<string, string> | null | undefined)?.role || '';
   const initials = (user?.name || user?.email || 'U').slice(0, 1).toUpperCase();
@@ -68,15 +68,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (status === 'loading') return;
     if (status === 'unauthenticated') {
-      if (typeof window !== 'undefined') localStorage.removeItem('access_token');
+      clearTokenCache();
       router.replace('/login');
-      return;
     }
-    if (status === 'authenticated') {
-      if (!accessToken) { signOut({ callbackUrl: '/login' }); return; }
-      if (typeof window !== 'undefined') localStorage.setItem('access_token', accessToken);
-    }
-  }, [status, accessToken, router]);
+  }, [status, router]);
 
   const filteredNav = NAV.filter(i => !i.roles || (role && i.roles.includes(role)));
 

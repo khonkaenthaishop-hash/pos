@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getSession, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 
 const api = axios.create({
   baseURL:
@@ -7,32 +7,37 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// In-memory token cache only — never stored in localStorage (XSS risk)
-let cachedSessionAccessToken: string | null = null;
-let lastSessionFetchMs = 0;
-const SESSION_TOKEN_CACHE_MS = 5_000;
+// In-memory token cache — fetched from server-side /api/auth/token (ไม่ผ่าน client session)
+let cachedToken: string | null = null;
+let lastFetchMs = 0;
+const CACHE_MS = 5_000;
 
 async function getAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
 
   const now = Date.now();
-  if (
-    cachedSessionAccessToken &&
-    now - lastSessionFetchMs < SESSION_TOKEN_CACHE_MS
-  ) {
-    return cachedSessionAccessToken;
+  if (cachedToken && now - lastFetchMs < CACHE_MS) {
+    return cachedToken;
   }
 
   try {
-    const session = await getSession();
-    const token = (session as unknown as Record<string, unknown>)
-      ?.accessToken as string | undefined;
-    cachedSessionAccessToken = token?.trim() ? token : null;
-    lastSessionFetchMs = now;
-    return cachedSessionAccessToken;
+    const res = await fetch("/api/auth/token");
+    if (!res.ok) {
+      cachedToken = null;
+      return null;
+    }
+    const data = await res.json();
+    cachedToken = data.token ?? null;
+    lastFetchMs = now;
+    return cachedToken;
   } catch {
     return null;
   }
+}
+
+export function clearTokenCache() {
+  cachedToken = null;
+  lastFetchMs = 0;
 }
 
 // Request interceptor — แนบ token
@@ -50,11 +55,7 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     if (err.response?.status === 401 && typeof window !== "undefined") {
-      // Clear in-memory token cache
-      cachedSessionAccessToken = null;
-      lastSessionFetchMs = 0;
-
-      // Sign out via NextAuth (clears httpOnly cookie) and redirect to login
+      clearTokenCache();
       await signOut({ callbackUrl: "/login", redirect: true });
     }
     return Promise.reject(err);
